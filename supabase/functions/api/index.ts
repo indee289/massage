@@ -81,8 +81,11 @@ async function handler(req:Request){
   }
 
   if(req.method==="POST" && path==="messages"){
-    const plan=await activePlan(user.id);
-    if(!plan.active) return Response.json({error:"Premium required"}, {status:403, headers: corsHeaders});
+    // Admin users bypass Premium requirement
+    if(user.id !== ADMIN_ID){
+      const plan=await activePlan(user.id);
+      if(!plan.active) return Response.json({error:"Premium required"}, {status:403, headers: corsHeaders});
+    }
     const {text}=await req.json();
     if(typeof text!=="string" || !text.trim()) return Response.json({error:"Empty message"}, {status:400, headers: corsHeaders});
     const {data,error}=await db.from("messages").insert({user_id:user.id,sender_id:user.id,text:text.trim()}).select().single();
