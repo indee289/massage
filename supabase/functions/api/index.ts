@@ -81,8 +81,9 @@ async function handler(req:Request){
   }
 
   if(req.method==="POST" && path==="messages"){
-    // Admin users bypass Premium requirement
-    if(user.id !== ADMIN_ID){
+    // Admin users bypass Premium requirement; normal users must have active Premium
+    const isAdmin = user.id === ADMIN_ID;
+    if(!isAdmin){
       const plan=await activePlan(user.id);
       if(!plan.active) return Response.json({error:"Premium required"}, {status:403, headers: corsHeaders});
     }
