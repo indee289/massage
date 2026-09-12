@@ -35,54 +35,70 @@ async function loadMe(){
   if(!initData()){ toast("Open this page from Telegram."); return; }
   try{
     state.me = await api("/me");
-    $("statusText").textContent = state.me.is_admin ? "Admin" : "Private Messenger";
-    $("adminBtn").classList.toggle("hidden",!state.me.is_admin);
     
-    // Admin users have permanent full access without Premium
-    if(state.me.is_admin){
+    // Determine access: Admin always has access, normal users need Premium
+    const isAdmin = state.me.is_admin === true;
+    const hasActivePremium = state.me.subscription?.active === true;
+    
+    $("statusText").textContent = isAdmin ? "Admin" : "Private Messenger";
+    $("adminBtn").classList.toggle("hidden", !isAdmin);
+    
+    // For Admin: show "Admin Access" badge and hide purchase button
+    if(isAdmin){
       $("planBadge").textContent = "Admin Access";
       $("subscribeBtn").classList.add("hidden");
-      $("openChatBtn").classList.remove("hidden");
     } else {
-      // Normal users see Premium status and purchase button
-      const hasActivePremium = state.me.subscription?.active;
+      // For Normal User: show Premium status and conditionally show purchase button
       $("planBadge").textContent = hasActivePremium
         ? (state.me.subscription.lifetime ? "Lifetime Premium" : "Premium Active")
         : "Premium required";
       $("subscribeBtn").classList.toggle("hidden", hasActivePremium);
-      $("openChatBtn").classList.remove("hidden");
     }
-  }catch(e){toast(e.message)}
+  }catch(e){
+    toast(e.message);
+  }
 }
 
 async function openChat(){
-  // Allow if admin OR has active Premium
-  const canAccess = state.me?.is_admin || state.me?.subscription?.active;
+  // Access rule: Allow if (Admin) OR (Normal user with Premium)
+  const isAdmin = state.me?.is_admin === true;
+  const hasActivePremium = state.me?.subscription?.active === true;
+  const canAccess = isAdmin || hasActivePremium;
+  
   if(!canAccess){
     toast("Premium is required.");
     return;
   }
+  
   state.chatUserId = state.me.id;
   show("chatView");
   await loadMessages();
   startPolling();
 }
+
 async function loadMessages(){
   const d=await api("/messages");
   renderMessages($("messages"),d.messages,state.me.id);
 }
+
 function renderMessages(el,list,myId){
   el.innerHTML=list.map(m=>`<div class="bubble ${m.sender_id===myId?"mine":"theirs"}">
     ${escapeHtml(m.text)}<div class="time">${formatTime(m.created_at)}</div></div>`).join("");
   el.scrollTop=el.scrollHeight;
 }
+
 async function sendMessage(){
   const input=$("messageInput"), text=input.value.trim();
   if(!text)return;
   input.value="";
-  try{await api("/messages",{method:"POST",body:JSON.stringify({text})});await loadMessages();}
-  catch(e){toast(e.message)}
+  try{
+    await api("/messages",{method:"POST",body:JSON.stringify({text})});
+    await loadMessages();
+  }catch(e){
+    toast(e.message);
+  }
 }
+
 function startPolling(){
   clearInterval(state.poll);
   state.poll=setInterval(()=>{if(!$("chatView").classList.contains("hidden"))loadMessages().catch(()=>{})},1800);
@@ -109,21 +125,28 @@ async function openAdmin(){
     </div>`).join("");
   document.querySelectorAll(".conversation").forEach(x=>x.onclick=()=>openAdminChat(x.dataset.id));
 }
+
 async function openAdminChat(id){
   state.adminUserId=String(id);
   $("adminChat").classList.remove("hidden");
   await loadAdminMessages();
 }
+
 async function loadAdminMessages(){
   const d=await api("/admin-messages?user_id="+encodeURIComponent(state.adminUserId));
   renderMessages($("adminChatMessages"),d.messages,state.me.id);
 }
+
 async function sendAdminMessage(){
   const input=$("adminMessageInput"),text=input.value.trim();
   if(!text||!state.adminUserId)return;
   input.value="";
-  try{await api("/admin-messages",{method:"POST",body:JSON.stringify({user_id:Number(state.adminUserId),text})});await loadAdminMessages();}
-  catch(e){toast(e.message)}
+  try{
+    await api("/admin-messages",{method:"POST",body:JSON.stringify({user_id:Number(state.adminUserId),text})});
+    await loadAdminMessages();
+  }catch(e){
+    toast(e.message);
+  }
 }
 
 $("openChatBtn").onclick=openChat;
