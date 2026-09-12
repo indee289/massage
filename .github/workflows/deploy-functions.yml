@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
   workflow_dispatch:
 
 jobs:
@@ -23,5 +26,8 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy Edge Functions
-        run: supabase functions deploy --use-api --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Deploy api function
+        run: supabase functions deploy api --use-api --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Deploy telegram-webhook function
+        run: supabase functions deploy telegram-webhook --use-api --project-ref "$SUPABASE_PROJECT_ID"
