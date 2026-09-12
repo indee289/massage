@@ -37,15 +37,22 @@ async function loadMe(){
     state.me = await api("/me");
     $("statusText").textContent = state.me.is_admin ? "Admin" : "Private Messenger";
     $("adminBtn").classList.toggle("hidden",!state.me.is_admin);
-    $("planBadge").textContent = state.me.subscription?.active
-      ? (state.me.subscription.lifetime ? "Lifetime Premium" : "Premium Active")
-      : "Premium required";
-    $("subscribeBtn").classList.toggle("hidden",!!state.me.subscription?.active);
+    
+    // Admin users bypass Premium requirement
+    if(state.me.is_admin){
+      $("planBadge").textContent = "Admin Access";
+      $("subscribeBtn").classList.add("hidden");
+    } else {
+      $("planBadge").textContent = state.me.subscription?.active
+        ? (state.me.subscription.lifetime ? "Lifetime Premium" : "Premium Active")
+        : "Premium required";
+      $("subscribeBtn").classList.toggle("hidden",!!state.me.subscription?.active);
+    }
   }catch(e){toast(e.message)}
 }
 
 async function openChat(){
-  if(!state.me?.subscription?.active){toast("Premium is required."); return;}
+  if(!state.me?.is_admin && !state.me?.subscription?.active){toast("Premium is required."); return;}
   state.chatUserId = state.me.id;
   show("chatView");
   await loadMessages();
