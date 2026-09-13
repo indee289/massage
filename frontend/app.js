@@ -1,12 +1,35 @@
 /* ══════════════════════════════════════
    Sanya Messenger — Premium App Logic
-   Fully preserves original API & workflow
-   New: edit/unsend/delete, profile edit,
-        avatar upload, admin tabs/powers
+   Fixed version
+
+   Existing workflow preserved:
+   - Telegram Mini App
+   - Premium access
+   - Admin access
+   - Private chat
+   - Message edit
+   - Unsend
+   - Delete
+   - Profile edit
+   - Avatar upload
+   - Admin inbox
+   - Admin users
+   - Admin stats
+   - Ban / Unban
+   - Lifetime Premium
    ══════════════════════════════════════ */
 
 const tg = window.Telegram?.WebApp;
-const API = "https://emqseukhovnzgrmsvlag.supabase.co/functions/v1/api";
+
+const API = (
+  window.SUPABASE_FUNCTION_URL ||
+  "https://emqseukhovnzgrmsvlag.supabase.co/functions/v1/api"
+).replace(/\/$/, "");
+
+/* ══════════════════════════════════════
+   STATE
+   ══════════════════════════════════════ */
+
 let state = {
   me: null,
   chatUserId: null,
@@ -18,15 +41,24 @@ let state = {
   adminTab: "chats",
 };
 
-/* ── Telegram init ── */
+/* ══════════════════════════════════════
+   TELEGRAM INIT
+   ══════════════════════════════════════ */
+
 if (tg) {
   tg.ready();
   tg.expand();
-  tg.setBackgroundColor("#000000");
-  tg.setHeaderColor("#000000");
+
+  try {
+    tg.setBackgroundColor("#000000");
+    tg.setHeaderColor("#000000");
+  } catch {}
 }
 
-/* ── Helpers ── */
+/* ══════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════ */
+
 const $ = id => document.getElementById(id);
 
 function initData() {
@@ -36,23 +68,30 @@ function initData() {
 function headers() {
   return {
     "Content-Type": "application/json",
-    "X-Telegram-Init-Data": initData()
+    "X-Telegram-Init-Data": initData(),
   };
 }
 
 async function api(path, options = {}) {
-  const res = await fetch(API + path, {
-    ...options,
-    headers: {
-      ...headers(),
-      ...(options.headers || {})
-    }
-  });
+  const res = await fetch(
+    API + path,
+    {
+      ...options,
+      headers: {
+        ...headers(),
+        ...(options.headers || {}),
+      },
+    },
+  );
 
-  const data = await res.json().catch(() => ({}));
+  const data =
+    await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.error || "Request failed");
+    throw new Error(
+      data.error ||
+      `Request failed (${res.status})`,
+    );
   }
 
   return data;
@@ -60,75 +99,140 @@ async function api(path, options = {}) {
 
 let toastTimer = null;
 
-function toast(msg, duration = 2400) {
+function toast(
+  msg,
+  duration = 2400,
+) {
   const el = $("toast");
+
+  if (!el) return;
+
   el.textContent = msg;
   el.classList.add("show");
 
   clearTimeout(toastTimer);
 
   toastTimer = setTimeout(
-    () => el.classList.remove("show"),
-    duration
+    () =>
+      el.classList.remove("show"),
+    duration,
   );
 }
 
 function show(id) {
-  ["homeView", "chatView", "adminView"].forEach(
-    x => $(x).classList.add("hidden")
-  );
+  [
+    "homeView",
+    "chatView",
+    "adminView",
+  ].forEach(x => {
+    const el = $(x);
+    if (el) {
+      el.classList.add("hidden");
+    }
+  });
 
-  $(id).classList.remove("hidden");
+  const target = $(id);
+
+  if (target) {
+    target.classList.remove("hidden");
+  }
 }
 
-function escapeHtml(s) {
-  return String(s).replace(
+function escapeHtml(value) {
+  return String(value ?? "").replace(
     /[&<>"']/g,
-    c => ({
+    char => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       '"': "&quot;",
-      "'": "&#039;"
-    }[c])
+      "'": "&#039;",
+    }[char]),
   );
 }
 
-function formatTime(s) {
-  return new Date(s).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+function formatTime(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleTimeString(
+    [],
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
 }
 
-function formatDate(s) {
-  const d = new Date(s);
+function formatDate(value) {
+  const d = new Date(value);
+
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+
   const today = new Date();
-  const yesterday = new Date(today);
 
-  yesterday.setDate(today.getDate() - 1);
+  const yesterday =
+    new Date(today);
 
-  if (d.toDateString() === today.toDateString()) {
+  yesterday.setDate(
+    today.getDate() - 1,
+  );
+
+  if (
+    d.toDateString() ===
+    today.toDateString()
+  ) {
     return "Today";
   }
 
-  if (d.toDateString() === yesterday.toDateString()) {
+  if (
+    d.toDateString() ===
+    yesterday.toDateString()
+  ) {
     return "Yesterday";
   }
 
-  return d.toLocaleDateString([], {
-    month: "short",
-    day: "numeric"
-  });
+  return d.toLocaleDateString(
+    [],
+    {
+      month: "short",
+      day: "numeric",
+      year:
+        d.getFullYear() !==
+        today.getFullYear()
+          ? "numeric"
+          : undefined,
+    },
+  );
 }
 
 function autoResize(textarea) {
+  if (!textarea) return;
+
   textarea.style.height = "auto";
+
   textarea.style.height =
-    Math.min(textarea.scrollHeight, 140) + "px";
+    Math.min(
+      textarea.scrollHeight,
+      140,
+    ) + "px";
 }
 
-function setAvatar(imgEl, textEl, url, letter) {
+function setAvatar(
+  imgEl,
+  textEl,
+  url,
+  letter,
+) {
+  if (!imgEl) return;
+
   if (url) {
     imgEl.src = url;
     imgEl.style.display = "block";
@@ -140,21 +244,57 @@ function setAvatar(imgEl, textEl, url, letter) {
     imgEl.style.display = "none";
 
     if (textEl) {
-      textEl.textContent = letter || "?";
+      textEl.textContent =
+        letter || "?";
     }
   }
 }
 
-/* ══ Load Me ══ */
+/* ══════════════════════════════════════
+   ACCESS HELPERS
+   ══════════════════════════════════════ */
+
+/*
+  IMPORTANT:
+  Admin is ALWAYS allowed to use the app.
+  Premium is required only for normal users.
+*/
+
+function isCurrentUserAdmin() {
+  return state.me?.is_admin === true;
+}
+
+function hasPremium() {
+  return (
+    state.me?.subscription?.active ===
+    true
+  );
+}
+
+function canChat() {
+  return (
+    isCurrentUserAdmin() ||
+    hasPremium()
+  );
+}
+
+/* ══════════════════════════════════════
+   LOAD ME
+   ══════════════════════════════════════ */
 
 async function loadMe() {
   if (!initData()) {
-    toast("Open from Telegram.");
+    toast(
+      "Open this Mini App from Telegram.",
+    );
     return;
   }
 
   try {
-    state.me = await api("/me");
+    const me =
+      await api("/me");
+
+    state.me = me;
 
     const {
       first_name,
@@ -162,118 +302,196 @@ async function loadMe() {
       bio,
       avatar_url,
       is_admin,
-      subscription
-    } = state.me;
+      subscription,
+    } = me;
 
-    /* Topbar */
-    $("brandName").textContent =
-      first_name || "Sanya";
+    /*
+      Topbar
+    */
 
-    $("statusText").textContent =
-      is_admin ? "Admin" : "Messenger";
+    if ($("brandName")) {
+      $("brandName").textContent =
+        first_name || "Sanya";
+    }
+
+    if ($("statusText")) {
+      $("statusText").textContent =
+        is_admin
+          ? "Admin"
+          : "Messenger";
+    }
 
     setAvatar(
       $("brandAvatarImg"),
       $("brandAvatar"),
       avatar_url,
-      (first_name || "S")[0]
+      (first_name || "S")[0],
     );
 
-    /* Hero */
-    $("heroName").textContent =
-      first_name || "Sanya";
+    /*
+      Hero
+    */
 
-    $("heroBio").textContent =
-      bio || "Private messaging inside Telegram.";
+    if ($("heroName")) {
+      $("heroName").textContent =
+        first_name || "Sanya";
+    }
 
-    $("heroUsername").textContent =
-      username ? "@" + username : "";
+    if ($("heroBio")) {
+      $("heroBio").textContent =
+        bio ||
+        "Private messaging inside Telegram.";
+    }
+
+    if ($("heroUsername")) {
+      $("heroUsername").textContent =
+        username
+          ? "@" + username
+          : "";
+    }
 
     setAvatar(
       $("heroAvatarImg"),
       $("heroAvatar"),
       avatar_url,
-      (first_name || "S")[0]
+      (first_name || "S")[0],
     );
 
-    /* Chat head */
-    $("chatHeadName").textContent =
-      first_name || "Sanya";
+    /*
+      Chat header
+    */
+
+    if ($("chatHeadName")) {
+      $("chatHeadName").textContent =
+        first_name || "Sanya";
+    }
 
     setAvatar(
       $("chatMiniAvatarImg"),
       $("chatMiniAvatar"),
       avatar_url,
-      (first_name || "S")[0]
+      (first_name || "S")[0],
     );
 
-    /* Admin button */
-    $("adminBtn").classList.toggle(
-      "hidden",
-      !is_admin
-    );
+    /*
+      Admin button.
+    */
 
-    /* Plan badge */
-    const badge = $("planBadge");
-
-    if (subscription?.lifetime) {
-      badge.textContent =
-        "✨ Lifetime Premium";
-
-      badge.classList.add("active");
-
-    } else if (subscription?.active) {
-      badge.textContent =
-        "⭐ Premium Active";
-
-      badge.classList.add("active");
-
-    } else {
-      badge.textContent =
-        "Premium required";
-
-      badge.classList.remove("active");
+    if ($("adminBtn")) {
+      $("adminBtn").classList.toggle(
+        "hidden",
+        !is_admin,
+      );
     }
 
     /*
-      Admin never needs to purchase Premium.
-      Normal users see the button only when
-      they don't have active Premium.
+      Premium badge.
     */
-    $("subscribeBtn").classList.toggle(
-      "hidden",
-      is_admin || !!subscription?.active
-    );
+
+    const badge =
+      $("planBadge");
+
+    if (badge) {
+
+      /*
+        ADMIN MUST NEVER SHOW
+        "Premium required".
+      */
+
+      if (is_admin) {
+
+        badge.textContent =
+          "👑 Admin Access";
+
+        badge.classList.add(
+          "active",
+        );
+
+      } else if (
+        subscription?.lifetime
+      ) {
+
+        badge.textContent =
+          "✨ Lifetime Premium";
+
+        badge.classList.add(
+          "active",
+        );
+
+      } else if (
+        subscription?.active
+      ) {
+
+        badge.textContent =
+          "⭐ Premium Active";
+
+        badge.classList.add(
+          "active",
+        );
+
+      } else {
+
+        badge.textContent =
+          "Premium required";
+
+        badge.classList.remove(
+          "active",
+        );
+      }
+    }
+
+    /*
+      Subscribe button:
+      - Admin -> hidden
+      - Active Premium -> hidden
+      - Free user -> visible
+    */
+
+    if ($("subscribeBtn")) {
+      $("subscribeBtn").classList.toggle(
+        "hidden",
+        is_admin ||
+          !!subscription?.active,
+      );
+    }
 
   } catch (e) {
-    toast(e.message);
+
+    console.error(
+      "loadMe:",
+      e,
+    );
+
+    toast(
+      e.message ||
+      "Unable to load account.",
+    );
   }
 }
 
-/* ══ Chat ══ */
+/* ══════════════════════════════════════
+   USER CHAT
+   ══════════════════════════════════════ */
 
 async function openChat() {
 
   /*
-    IMPORTANT:
-    Admin can always open the chat.
-
-    Normal users require active Premium.
+    FIX:
+    Admin bypasses Premium.
   */
 
-  const isAdmin =
-    state.me?.is_admin === true;
+  if (!canChat()) {
 
-  const hasPremium =
-    state.me?.subscription?.active === true;
+    toast(
+      "⭐ Premium required to chat.",
+    );
 
-  if (!isAdmin && !hasPremium) {
-    toast("⭐ Premium required to chat.");
     return;
   }
 
   state.chatUserId =
-    state.me.id;
+    state.me?.id ??
+    null;
 
   clearEditMode();
 
@@ -286,28 +504,56 @@ async function openChat() {
 
 let lastMsgDate = null;
 
+/* ══════════════════════════════════════
+   LOAD USER MESSAGES
+   ══════════════════════════════════════ */
+
 async function loadMessages() {
+
+  if (!state.me) {
+    return;
+  }
+
   try {
-    const d = await api("/messages");
+
+    const d =
+      await api("/messages");
 
     renderMessages(
       $("messages"),
-      d.messages,
-      state.me.id,
-      false
+      d.messages || [],
+      Number(state.me.id),
+      false,
     );
 
   } catch (e) {
-    /* silent */
+
+    /*
+      Don't spam the user with
+      polling errors.
+    */
+
+    console.error(
+      "loadMessages:",
+      e,
+    );
   }
 }
+
+/* ══════════════════════════════════════
+   RENDER MESSAGES
+   ══════════════════════════════════════ */
 
 function renderMessages(
   container,
   list,
   myId,
-  isAdmin
+  isAdmin,
 ) {
+
+  if (!container) {
+    return;
+  }
 
   if (!list?.length) {
 
@@ -323,14 +569,20 @@ function renderMessages(
   }
 
   let html = "";
+
   let lastDate = null;
 
   list.forEach(m => {
 
     const msgDate =
-      formatDate(m.created_at);
+      formatDate(
+        m.created_at,
+      );
 
-    if (msgDate !== lastDate) {
+    if (
+      msgDate !==
+      lastDate
+    ) {
 
       html += `
         <div class="day-divider">
@@ -338,34 +590,93 @@ function renderMessages(
         </div>
       `;
 
-      lastDate = msgDate;
+      lastDate =
+        msgDate;
     }
 
-    const isMine =
-      m.sender_id === myId ||
-      (isAdmin &&
-        m.sender_id !== state.adminUserId);
+    /*
+      IMPORTANT ADMIN FIX
+
+      User chat:
+        sender_id === myId -> mine
+
+      Admin chat:
+        sender_id === admin ID -> mine
+        everything else -> user
+
+      Previous code compared sender_id
+      against adminUserId in the wrong way.
+    */
+
+    const senderId =
+      Number(m.sender_id);
+
+    const currentId =
+      Number(myId);
+
+    const adminId =
+      Number(
+        state.me?.id ||
+        0,
+      );
+
+    let isMine = false;
+
+    if (isAdmin) {
+
+      /*
+        Admin's own messages are mine.
+      */
+
+      isMine =
+        senderId ===
+        adminId;
+
+    } else {
+
+      /*
+        Normal user's own messages.
+      */
+
+      isMine =
+        senderId ===
+        currentId;
+    }
 
     const cls =
-      isMine ? "mine" : "theirs";
+      isMine
+        ? "mine"
+        : "theirs";
 
     const deleted =
-      m.deleted_at ? "deleted" : "";
+      m.deleted_at
+        ? "deleted"
+        : "";
 
     const edited =
-      m.edited_at && !m.deleted_at
+      m.edited_at &&
+      !m.deleted_at
         ? "edited"
         : "";
 
     const content =
       m.deleted_at
         ? "🚫 Message deleted"
-        : escapeHtml(m.text);
+        : escapeHtml(
+            m.text || "",
+          );
+
+    /*
+      Only normal user messages
+      can be edited by user.
+
+      Admin messages are not user-editable.
+    */
 
     const canEdit =
+      !isAdmin &&
       isMine &&
-      !m.deleted_at &&
-      !isAdmin;
+      !m.deleted_at;
 
     const canDelete =
       isMine &&
@@ -374,23 +685,42 @@ function renderMessages(
     const canUnsend =
       canDelete;
 
+    /*
+      Tick only for current sender.
+    */
+
     const tick =
       isMine
-        ? `<span class="tick ${
-            m.seen_at ? "seen" : ""
-          }">✓✓</span>`
+        ? `
+          <span class="tick ${
+            m.seen_at
+              ? "seen"
+              : ""
+          }">✓✓</span>
+        `
         : "";
+
+    /*
+      Store raw text safely in dataset.
+      escapeHtml is used because it goes
+      into an HTML attribute.
+    */
+
+    const safeText =
+      escapeHtml(
+        m.text || "",
+      );
 
     html += `
       <div
         class="bubble-wrap ${cls}"
-        data-id="${m.id}"
+        data-id="${Number(m.id)}"
       >
 
         <div
           class="bubble ${deleted} ${edited}"
-          data-id="${m.id}"
-          data-text="${escapeHtml(m.text || "")}"
+          data-id="${Number(m.id)}"
+          data-text="${safeText}"
           data-mine="${isMine}"
           data-deleted="${!!m.deleted_at}"
           data-can-edit="${canEdit}"
@@ -402,7 +732,6 @@ function renderMessages(
           <span>
             ${formatTime(m.created_at)}
           </span>
-
           ${tick}
         </div>
 
@@ -410,140 +739,272 @@ function renderMessages(
     `;
   });
 
-  container.innerHTML = html;
+  container.innerHTML =
+    html;
+
+  /*
+    Always show latest messages.
+  */
 
   container.scrollTop =
     container.scrollHeight;
 
-  /* Long press + right click */
+  /*
+    Long press / right click.
+  */
 
   container
-    .querySelectorAll(".bubble")
-    .forEach(b => {
+    .querySelectorAll(
+      ".bubble",
+    )
+    .forEach(
+      bubble => {
 
-      let pressTimer = null;
+        let pressTimer =
+          null;
 
-      b.addEventListener(
-        "contextmenu",
-        e => {
-          e.preventDefault();
-          showMsgCtx(
-            e,
-            b,
-            isAdmin
-          );
-        }
-      );
+        bubble.addEventListener(
+          "contextmenu",
+          e => {
 
-      b.addEventListener(
-        "touchstart",
-        e => {
-          pressTimer =
-            setTimeout(
-              () =>
-                showMsgCtx(
-                  e.touches[0],
-                  b,
-                  isAdmin
-                ),
-              500
+            e.preventDefault();
+
+            showMsgCtx(
+              e,
+              bubble,
+              isAdmin,
             );
-        },
-        { passive: true }
-      );
+          },
+        );
 
-      b.addEventListener(
-        "touchend",
-        () => clearTimeout(pressTimer)
-      );
+        bubble.addEventListener(
+          "touchstart",
+          e => {
 
-      b.addEventListener(
-        "touchmove",
-        () => clearTimeout(pressTimer)
-      );
-    });
+            pressTimer =
+              setTimeout(
+                () => {
+
+                  showMsgCtx(
+                    e.touches[0],
+                    bubble,
+                    isAdmin,
+                  );
+
+                },
+                500,
+              );
+          },
+          {
+            passive: true,
+          },
+        );
+
+        bubble.addEventListener(
+          "touchend",
+          () => {
+            clearTimeout(
+              pressTimer,
+            );
+          },
+        );
+
+        bubble.addEventListener(
+          "touchmove",
+          () => {
+            clearTimeout(
+              pressTimer,
+            );
+          },
+        );
+      },
+    );
 }
 
-/* ── Message Context Menu ── */
+/* ══════════════════════════════════════
+   MESSAGE CONTEXT MENU
+   ══════════════════════════════════════ */
 
 function showMsgCtx(
   e,
   bubble,
-  isAdmin
+  isAdmin,
 ) {
+
+  if (!bubble) {
+    return;
+  }
 
   const id =
     bubble.dataset.id;
 
   const text =
-    bubble.dataset.text;
+    bubble.dataset.text || "";
 
   const isMine =
-    bubble.dataset.mine === "true";
+    bubble.dataset.mine ===
+    "true";
 
   const isDeleted =
-    bubble.dataset.deleted === "true";
+    bubble.dataset.deleted ===
+    "true";
 
   const canEdit =
-    bubble.dataset.canEdit === "true";
+    bubble.dataset.canEdit ===
+    "true";
 
-  if (isDeleted) return;
+  if (isDeleted) {
+    return;
+  }
 
   const items = [];
+
+  /*
+    User's own message:
+    Edit + Unsend
+  */
 
   if (canEdit) {
 
     items.push({
-      label: "✏️ Edit",
-      icon: "edit",
-      action: () =>
-        startEdit(id, text)
+      label:
+        "✏️ Edit",
+
+      icon:
+        "edit",
+
+      action:
+        () =>
+          startEdit(
+            id,
+            text,
+          ),
     });
 
     items.push({
-      label: "↩️ Unsend",
-      icon: "unsend",
-      action: () =>
-        confirmUnsend(id),
-      danger: true
+      label:
+        "↩️ Unsend",
+
+      icon:
+        "unsend",
+
+      action:
+        () =>
+          confirmUnsend(
+            id,
+          ),
+
+      danger:
+        true,
     });
   }
 
-  if (!isAdmin && isMine) {
+  /*
+    User's delete option.
+  */
+
+  if (
+    !isAdmin &&
+    isMine
+  ) {
 
     items.push({
-      label: "🗑️ Delete",
-      icon: "delete",
-      action: () =>
-        confirmDelete(id),
-      danger: true
+      label:
+        "🗑️ Delete",
+
+      icon:
+        "delete",
+
+      action:
+        () =>
+          confirmDelete(
+            id,
+          ),
+
+      danger:
+        true,
     });
   }
+
+  /*
+    Admin can delete any message
+    in the admin conversation.
+  */
 
   if (isAdmin) {
 
     items.push({
-      label: "🗑️ Delete (Admin)",
-      icon: "delete",
-      action: () =>
-        adminDeleteMsg(id),
-      danger: true
+      label:
+        "🗑️ Delete (Admin)",
+
+      icon:
+        "delete",
+
+      action:
+        () =>
+          adminDeleteMsg(
+            id,
+          ),
+
+      danger:
+        true,
     });
   }
 
+  /*
+    Copy.
+  */
+
   items.push({
-    label: "📋 Copy",
-    icon: "copy",
-    action: () => {
-      navigator.clipboard?.writeText(text);
-      toast("Copied!");
-    }
+    label:
+      "📋 Copy",
+
+    icon:
+      "copy",
+
+    action:
+      () => {
+
+        if (
+          navigator.clipboard
+        ) {
+
+          navigator.clipboard
+            .writeText(
+              text,
+            )
+            .then(
+              () =>
+                toast(
+                  "Copied!",
+                ),
+            )
+            .catch(
+              () =>
+                toast(
+                  "Copy failed",
+                ),
+            );
+
+        } else {
+
+          toast(
+            "Copy not supported",
+          );
+        }
+      },
   });
 
-  if (!items.length) return;
+  if (!items.length) {
+    return;
+  }
 
   const ctx =
     $("msgCtx");
+
+  if (!ctx) {
+    return;
+  }
 
   ctx.innerHTML =
     items
@@ -551,31 +1012,53 @@ function showMsgCtx(
         item => `
           <div
             class="msg-ctx-item ${
-              item.danger ? "danger" : ""
+              item.danger
+                ? "danger"
+                : ""
             }"
             data-action="${item.icon}"
           >
             ${item.label}
           </div>
-        `
+        `,
       )
       .join("");
 
+  /*
+    Position safely inside viewport.
+  */
+
   const x =
     Math.min(
-      (e.clientX ||
+      Number(
+        e.clientX ||
         e.pageX ||
-        50),
-      window.innerWidth - 180
+        50,
+      ),
+      Math.max(
+        10,
+        window.innerWidth -
+          190,
+      ),
     );
+
+  const estimatedHeight =
+    items.length *
+      48 +
+    12;
 
   const y =
     Math.min(
-      (e.clientY ||
+      Number(
+        e.clientY ||
         e.pageY ||
-        50),
-      window.innerHeight -
-        (items.length * 48 + 12)
+        50,
+      ),
+      Math.max(
+        10,
+        window.innerHeight -
+          estimatedHeight,
+      ),
     );
 
   ctx.style.left =
@@ -585,24 +1068,27 @@ function showMsgCtx(
     y + "px";
 
   ctx.classList.remove(
-    "hidden"
+    "hidden",
   );
 
   const actionEls =
     ctx.querySelectorAll(
-      ".msg-ctx-item"
+      ".msg-ctx-item",
     );
 
   actionEls.forEach(
     (el, i) => {
-      el.onclick = () => {
-        ctx.classList.add(
-          "hidden"
-        );
 
-        items[i].action();
-      };
-    }
+      el.onclick =
+        () => {
+
+          ctx.classList.add(
+            "hidden",
+          );
+
+          items[i].action();
+        };
+    },
   );
 
   setTimeout(
@@ -610,40 +1096,69 @@ function showMsgCtx(
       document.addEventListener(
         "click",
         closeMsgCtx,
-        { once: true }
+        {
+          once: true,
+        },
       ),
-    10
+    10,
   );
 }
 
 function closeMsgCtx() {
-  $("msgCtx")
-    .classList
-    .add("hidden");
+  const ctx =
+    $("msgCtx");
+
+  if (ctx) {
+    ctx.classList.add(
+      "hidden",
+    );
+  }
 }
 
-/* ── Edit Message ── */
+/* ══════════════════════════════════════
+   EDIT MESSAGE
+   ══════════════════════════════════════ */
 
-function startEdit(id, text) {
+function startEdit(
+  id,
+  text,
+) {
 
   state.editingMsgId =
-    id;
+    String(id);
 
   const input =
     $("messageInput");
 
-  input.value = text;
+  if (!input) {
+    return;
+  }
+
+  input.value =
+    text || "";
 
   input.focus();
 
-  autoResize(input);
+  autoResize(
+    input,
+  );
 
-  $("editBanner")
-    .classList
-    .remove("hidden");
+  const banner =
+    $("editBanner");
 
-  $("sendBtn").disabled =
-    false;
+  if (banner) {
+    banner.classList.remove(
+      "hidden",
+    );
+  }
+
+  const sendBtn =
+    $("sendBtn");
+
+  if (sendBtn) {
+    sendBtn.disabled =
+      false;
+  }
 }
 
 function clearEditMode() {
@@ -651,20 +1166,43 @@ function clearEditMode() {
   state.editingMsgId =
     null;
 
-  $("messageInput").value =
-    "";
+  const input =
+    $("messageInput");
 
-  $("editBanner")
-    .classList
-    .add("hidden");
+  if (input) {
+    input.value =
+      "";
 
-  $("sendBtn").disabled =
-    true;
+    autoResize(
+      input,
+    );
+  }
+
+  const banner =
+    $("editBanner");
+
+  if (banner) {
+    banner.classList.add(
+      "hidden",
+    );
+  }
+
+  const sendBtn =
+    $("sendBtn");
+
+  if (sendBtn) {
+    sendBtn.disabled =
+      true;
+  }
 }
 
-/* ── Unsend / Delete ── */
+/* ══════════════════════════════════════
+   UNSEND / DELETE
+   ══════════════════════════════════════ */
 
-function confirmUnsend(id) {
+function confirmUnsend(
+  id,
+) {
 
   showConfirm(
     "Unsend Message?",
@@ -675,128 +1213,186 @@ function confirmUnsend(id) {
 
         await api(
           "/messages/" +
-            id +
+            encodeURIComponent(
+              id,
+            ) +
             "/unsend",
           {
-            method: "POST"
-          }
+            method:
+              "POST",
+          },
         );
 
         toast(
-          "Message unsent."
+          "Message unsent.",
         );
 
         await loadMessages();
 
       } catch (e) {
-        toast(e.message);
+
+        toast(
+          e.message,
+        );
       }
-    }
+    },
   );
 }
 
-function confirmDelete(id) {
+function confirmDelete(
+  id,
+) {
 
   showConfirm(
     "Delete Message?",
-    "Delete this message for yourself.",
+    "Delete this message?",
     async () => {
 
       try {
 
         await api(
           "/messages/" +
-            id,
+            encodeURIComponent(
+              id,
+            ),
           {
-            method: "DELETE"
-          }
+            method:
+              "DELETE",
+          },
         );
 
-        toast("Deleted.");
+        toast(
+          "Deleted.",
+        );
 
         await loadMessages();
 
       } catch (e) {
-        toast(e.message);
+
+        toast(
+          e.message,
+        );
       }
     },
-    false
+    false,
   );
 }
 
-async function adminDeleteMsg(id) {
+async function adminDeleteMsg(
+  id,
+) {
 
   try {
 
     await api(
       "/admin-messages/" +
-        id,
+        encodeURIComponent(
+          id,
+        ),
       {
-        method: "DELETE"
-      }
+        method:
+          "DELETE",
+      },
     );
 
     toast(
-      "Message deleted."
+      "Message deleted.",
     );
 
     await loadAdminMessages();
 
   } catch (e) {
-    toast(e.message);
+
+    toast(
+      e.message,
+    );
   }
 }
 
-/* ── Send / Edit ── */
+/* ══════════════════════════════════════
+   SEND / EDIT MESSAGE
+   ══════════════════════════════════════ */
 
 async function sendMessage() {
 
   const input =
     $("messageInput");
 
+  const sendBtn =
+    $("sendBtn");
+
+  if (!input) {
+    return;
+  }
+
   const text =
     input.value.trim();
 
-  if (!text) return;
+  if (!text) {
+    return;
+  }
 
-  $("sendBtn").disabled =
-    true;
+  if (sendBtn) {
+    sendBtn.disabled =
+      true;
+  }
 
   try {
 
-    if (state.editingMsgId) {
+    /*
+      EDIT
+    */
+
+    if (
+      state.editingMsgId
+    ) {
 
       await api(
         "/messages/" +
-          state.editingMsgId,
+          encodeURIComponent(
+            state.editingMsgId,
+          ),
         {
-          method: "PATCH",
-          body: JSON.stringify({
-            text
-          })
-        }
+          method:
+            "PATCH",
+
+          body:
+            JSON.stringify({
+              text,
+            }),
+        },
       );
 
       toast(
-        "Message edited."
+        "Message edited.",
       );
 
       clearEditMode();
 
     } else {
 
-      input.value = "";
+      /*
+        NEW MESSAGE
+      */
 
-      autoResize(input);
+      input.value =
+        "";
+
+      autoResize(
+        input,
+      );
 
       await api(
         "/messages",
         {
-          method: "POST",
-          body: JSON.stringify({
-            text
-          })
-        }
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+              text,
+            }),
+        },
       );
     }
 
@@ -804,80 +1400,203 @@ async function sendMessage() {
 
   } catch (e) {
 
-    toast(e.message);
+    /*
+      Restore text if sending failed.
+    */
+
+    if (
+      !state.editingMsgId &&
+      !input.value
+    ) {
+      input.value =
+        text;
+
+      autoResize(
+        input,
+      );
+    }
+
+    toast(
+      e.message,
+    );
   }
 
-  $("sendBtn").disabled =
-    !$("messageInput")
-      .value.trim();
+  if (sendBtn) {
+    sendBtn.disabled =
+      !input.value.trim();
+  }
 }
+
+/* ══════════════════════════════════════
+   MESSAGE POLLING
+   ══════════════════════════════════════ */
 
 function startPolling() {
 
   clearInterval(
-    state.poll
+    state.poll,
   );
 
   state.poll =
-    setInterval(() => {
+    setInterval(
+      () => {
 
-      if (
-        !$("chatView")
-          .classList
-          .contains("hidden")
-      ) {
-        loadMessages()
-          .catch(() => {});
-      }
+        const chatView =
+          $("chatView");
 
-    }, 2000);
+        if (
+          chatView &&
+          !chatView.classList.contains(
+            "hidden",
+          )
+        ) {
+
+          loadMessages()
+            .catch(
+              () => {},
+            );
+        }
+
+      },
+      2000,
+    );
 }
 
-/* ══ Subscribe ══ */
+/* ══════════════════════════════════════
+   PREMIUM SUBSCRIBE
+   ══════════════════════════════════════ */
 
 async function subscribe() {
 
+  /*
+    Admin never needs Premium.
+  */
+
+  if (
+    isCurrentUserAdmin()
+  ) {
+
+    toast(
+      "👑 Admin already has full access.",
+    );
+
+    return;
+  }
+
+  /*
+    If Premium already active,
+    don't create another invoice.
+  */
+
+  if (
+    hasPremium()
+  ) {
+
+    toast(
+      "⭐ Premium is already active.",
+    );
+
+    return;
+  }
+
   try {
+
+    /*
+      Backend supports POST /create-invoice.
+      Price is controlled server-side:
+      199 Telegram Stars.
+    */
 
     const d =
       await api(
-        "/create-invoice"
+        "/create-invoice",
+        {
+          method:
+            "POST",
+        },
       );
 
-    if (tg?.openInvoice) {
+    if (
+      !d.invoice_url
+    ) {
+
+      throw new Error(
+        "Invoice URL not received.",
+      );
+    }
+
+    if (
+      tg?.openInvoice
+    ) {
 
       tg.openInvoice(
         d.invoice_url,
         result => {
 
           if (
-            result === "paid"
+            result ===
+            "paid"
           ) {
 
             toast(
-              "✨ Premium activated!"
+              "✨ Premium activated!",
+              3000,
             );
 
-            loadMe();
+            /*
+              Reload account status
+              after successful payment.
+            */
+
+            setTimeout(
+              () =>
+                loadMe(),
+              800,
+            );
           }
-        }
+
+          if (
+            result ===
+            "cancelled"
+          ) {
+
+            toast(
+              "Payment cancelled.",
+            );
+          }
+
+          if (
+            result ===
+            "failed"
+          ) {
+
+            toast(
+              "Payment failed.",
+            );
+          }
+        },
       );
 
     } else {
 
       window.open(
         d.invoice_url,
-        "_blank"
+        "_blank",
       );
     }
 
   } catch (e) {
 
-    toast(e.message);
+    toast(
+      e.message ||
+      "Unable to create payment.",
+    );
   }
 }
 
-/* ══ Profile Edit ══ */
+/* ══════════════════════════════════════
+   PROFILE EDIT
+   ══════════════════════════════════════ */
 
 function openProfileEdit() {
 
@@ -885,17 +1604,33 @@ function openProfileEdit() {
     first_name,
     bio,
     username,
-    avatar_url
-  } = state.me || {};
+    avatar_url,
+  } =
+    state.me || {};
 
-  $("editName").value =
-    first_name || "";
+  const nameInput =
+    $("editName");
 
-  $("editBio").value =
-    bio || "";
+  const bioInput =
+    $("editBio");
 
-  $("editUsername").value =
-    username || "";
+  const usernameInput =
+    $("editUsername");
+
+  if (nameInput) {
+    nameInput.value =
+      first_name || "";
+  }
+
+  if (bioInput) {
+    bioInput.value =
+      bio || "";
+  }
+
+  if (usernameInput) {
+    usernameInput.value =
+      username || "";
+  }
 
   state.avatarDataUrl =
     null;
@@ -906,82 +1641,118 @@ function openProfileEdit() {
   const preview =
     $("sheetAvatarPreview");
 
-  if (avatar_url) {
+  if (
+    img &&
+    preview
+  ) {
 
-    img.src =
-      avatar_url;
+    if (avatar_url) {
 
-    img.style.display =
-      "block";
+      img.src =
+        avatar_url;
 
-    preview.textContent =
-      "";
+      img.style.display =
+        "block";
 
-    preview.appendChild(
-      img
-    );
+      preview.textContent =
+        "";
 
-  } else {
+      preview.appendChild(
+        img,
+      );
 
-    img.style.display =
-      "none";
+    } else {
 
-    preview.textContent =
-      (first_name || "S")[0];
+      img.style.display =
+        "none";
+
+      preview.textContent =
+        (
+          first_name ||
+          "S"
+        )[0];
+    }
   }
 
-  $("profileSheet")
-    .classList
-    .remove("hidden");
+  const sheet =
+    $("profileSheet");
+
+  if (sheet) {
+    sheet.classList.remove(
+      "hidden",
+    );
+  }
 }
 
 function closeProfileEdit() {
 
-  $("profileSheet")
-    .classList
-    .add("hidden");
+  const sheet =
+    $("profileSheet");
+
+  if (sheet) {
+    sheet.classList.add(
+      "hidden",
+    );
+  }
 
   state.avatarDataUrl =
     null;
 }
 
+/* ══════════════════════════════════════
+   SAVE PROFILE
+   ══════════════════════════════════════ */
+
 async function saveProfile() {
 
   const name =
     $("editName")
-      .value
-      .trim();
+      ?.value
+      .trim() || "";
 
   const bio =
     $("editBio")
-      .value
-      .trim();
+      ?.value
+      .trim() || "";
 
   const username =
-    $("editUsername")
-      .value
-      .trim()
-      .replace(/^@/, "");
+    (
+      $("editUsername")
+        ?.value
+        .trim() || ""
+    ).replace(
+      /^@/,
+      "",
+    );
 
   try {
 
     await api(
       "/profile",
       {
-        method: "PATCH",
-        body: JSON.stringify({
-          first_name: name,
-          bio,
-          username,
-          avatar_data_url:
-            state.avatarDataUrl ||
-            undefined
-        })
-      }
+        method:
+          "PATCH",
+
+        body:
+          JSON.stringify({
+            first_name:
+              name,
+
+            bio:
+              bio,
+
+            username:
+              username,
+
+            avatar_data_url:
+              state.avatarDataUrl ||
+              undefined,
+          }),
+      },
     );
 
     toast(
-      "✅ Profile saved!"
+      "✅ Profile saved!",
     );
 
     closeProfileEdit();
@@ -990,21 +1761,44 @@ async function saveProfile() {
 
   } catch (e) {
 
-    toast(e.message);
+    toast(
+      e.message,
+    );
   }
 }
 
-/* Avatar upload */
+/* ══════════════════════════════════════
+   AVATAR UPLOAD
+   ══════════════════════════════════════ */
 
-$("avatarFileInput")
-  .addEventListener(
+const avatarFileInput =
+  $("avatarFileInput");
+
+if (avatarFileInput) {
+
+  avatarFileInput.addEventListener(
     "change",
     e => {
 
       const file =
-        e.target.files[0];
+        e.target.files?.[0];
 
-      if (!file) return;
+      if (!file) {
+        return;
+      }
+
+      if (
+        !file.type.startsWith(
+          "image/",
+        )
+      ) {
+
+        toast(
+          "Please select an image.",
+        );
+
+        return;
+      }
 
       if (
         file.size >
@@ -1012,7 +1806,7 @@ $("avatarFileInput")
       ) {
 
         toast(
-          "Image too large (max 5MB)"
+          "Image too large (max 5MB)",
         );
 
         return;
@@ -1033,6 +1827,13 @@ $("avatarFileInput")
           const img =
             $("sheetAvatarImg");
 
+          if (
+            !preview ||
+            !img
+          ) {
+            return;
+          }
+
           img.src =
             ev.target.result;
 
@@ -1043,381 +1844,577 @@ $("avatarFileInput")
             "";
 
           preview.appendChild(
-            img
+            img,
           );
         };
 
       reader.readAsDataURL(
-        file
+        file,
       );
-    }
+    },
   );
+}
 
-/* Tap hero avatar edit button */
+/* ══════════════════════════════════════
+   HERO AVATAR EDIT
+   ══════════════════════════════════════ */
 
-$("heroAvatarEdit")
-  .addEventListener(
+const heroAvatarEdit =
+  $("heroAvatarEdit");
+
+if (heroAvatarEdit) {
+
+  heroAvatarEdit.addEventListener(
     "click",
     () => {
 
       openProfileEdit();
 
       setTimeout(
-        () =>
-          $("avatarFileInput")
-            .click(),
-        300
+        () => {
+
+          const input =
+            $("avatarFileInput");
+
+          if (input) {
+            input.click();
+          }
+
+        },
+        300,
       );
-    }
-  );
-
-/* ══ Admin Panel ══ */
-
-async function openAdmin() {
-
-  if (
-    !state.me?.is_admin
-  ) {
-    return;
-  }
-
-  show("adminView");
-
-  $("adminChat")
-    .classList
-    .remove("open");
-
-  switchAdminTab(
-    "chats"
+    },
   );
 }
 
-function switchAdminTab(tab) {
+/* ══════════════════════════════════════
+   ADMIN PANEL
+   ══════════════════════════════════════ */
+
+async function openAdmin() {
+
+  /*
+    Frontend protection.
+    Backend ALSO verifies real admin ID.
+  */
+
+  if (
+    !isCurrentUserAdmin()
+  ) {
+
+    toast(
+      "Admin access required.",
+    );
+
+    return;
+  }
+
+  show(
+    "adminView",
+  );
+
+  const adminChat =
+    $("adminChat");
+
+  if (adminChat) {
+    adminChat.classList.remove(
+      "open",
+    );
+  }
+
+  switchAdminTab(
+    "chats",
+  );
+}
+
+/* ══════════════════════════════════════
+   ADMIN TABS
+   ══════════════════════════════════════ */
+
+function switchAdminTab(
+  tab,
+) {
+
+  if (
+    !isCurrentUserAdmin()
+  ) {
+    return;
+  }
 
   state.adminTab =
     tab;
 
   document
     .querySelectorAll(
-      ".admin-tab"
+      ".admin-tab",
     )
     .forEach(
       t =>
         t.classList.toggle(
           "active",
-          t.dataset.tab === tab
-        )
+          t.dataset.tab ===
+            tab,
+        ),
     );
 
-  $("tabChats")
-    .classList
-    .toggle(
+  const tabChats =
+    $("tabChats");
+
+  const tabUsers =
+    $("tabUsers");
+
+  const tabStats =
+    $("tabStats");
+
+  if (tabChats) {
+    tabChats.classList.toggle(
       "hidden",
-      tab !== "chats"
+      tab !== "chats",
     );
+  }
 
-  $("tabUsers")
-    .classList
-    .toggle(
+  if (tabUsers) {
+    tabUsers.classList.toggle(
       "hidden",
-      tab !== "users"
+      tab !== "users",
     );
+  }
 
-  $("tabStats")
-    .classList
-    .toggle(
+  if (tabStats) {
+    tabStats.classList.toggle(
       "hidden",
-      tab !== "stats"
+      tab !== "stats",
     );
+  }
 
-  if (tab === "chats") {
+  if (
+    tab ===
+    "chats"
+  ) {
     loadConversations();
   }
 
-  if (tab === "users") {
+  if (
+    tab ===
+    "users"
+  ) {
     loadUsers();
   }
 
-  if (tab === "stats") {
+  if (
+    tab ===
+    "stats"
+  ) {
     loadStats();
   }
 }
 
+/* ══════════════════════════════════════
+   ADMIN CONVERSATIONS
+   ══════════════════════════════ */
+
 async function loadConversations() {
 
-  $("tabChats").innerHTML =
+  const container =
+    $("tabChats");
+
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML =
     '<div class="spinner"></div>';
 
   try {
 
     const d =
       await api(
-        "/conversations"
+        "/conversations",
       );
 
-    if (
-      !d.conversations?.length
-    ) {
+    const conversations =
+      d.conversations ||
+      [];
 
-      $("tabChats").innerHTML =
-        '<div class="empty-state"><div class="empty-icon">💬</div><div>No conversations yet</div></div>';
+    if (!conversations.length) {
+
+      container.innerHTML =
+        `
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <div>No conversations yet</div>
+        </div>
+        `;
 
       return;
     }
 
-    $("tabChats").innerHTML =
-      d.conversations
-        .map(c => {
+    container.innerHTML =
+      conversations
+        .map(
+          c => {
 
-          const name =
-            escapeHtml(
-              c.first_name ||
-              c.username ||
-              String(c.user_id)
-            );
+            const name =
+              escapeHtml(
+                c.first_name ||
+                c.username ||
+                String(
+                  c.user_id,
+                ),
+              );
 
-          const last =
-            escapeHtml(
-              c.last_message ||
-              "No messages yet"
-            );
+            const last =
+              escapeHtml(
+                c.last_message ||
+                "No messages yet",
+              );
 
-          const letter =
-            (
-              c.first_name ||
-              "?"
-            )[0]
-              .toUpperCase();
+            const letter =
+              (
+                c.first_name ||
+                "?"
+              )[0]
+                .toUpperCase();
 
-          const premiumBadge =
-            c.is_premium
-              ? `<span class="conv-badge">⭐</span>`
-              : "";
+            const premiumBadge =
+              c.is_premium
+                ? `<span class="conv-badge">⭐</span>`
+                : "";
 
-          const unread =
-            c.unread_count > 0
-              ? `<div class="conv-unread">${c.unread_count}</div>`
-              : "";
+            const unread =
+              Number(
+                c.unread_count,
+              ) > 0
+                ? `
+                  <div class="conv-unread">
+                    ${Number(
+                      c.unread_count,
+                    )}
+                  </div>
+                `
+                : "";
 
-          const time =
-            c.last_message_at
-              ? formatTime(
-                  c.last_message_at
-                )
-              : "";
+            const time =
+              c.last_message_at
+                ? formatTime(
+                    c.last_message_at,
+                  )
+                : "";
 
-          const avatarContent =
-            c.avatar_url
-              ? `<img src="${escapeHtml(c.avatar_url)}" alt="">`
-              : letter;
+            const avatarContent =
+              c.avatar_url
+                ? `
+                  <img
+                    src="${escapeHtml(
+                      c.avatar_url,
+                    )}"
+                    alt=""
+                  >
+                `
+                : letter;
 
-          return `
-            <div
-              class="conv-item"
-              data-uid="${c.user_id}"
-              data-name="${name}"
-            >
-
-              <div class="conv-avatar">
-                ${avatarContent}
-              </div>
-
-              <div class="conv-info">
-
-                <div class="conv-name">
-                  ${name}${premiumBadge}
-                </div>
-
-                <div class="conv-last">
-                  ${last}
-                </div>
-
-              </div>
-
+            return `
               <div
-                style="
-                  display:flex;
-                  flex-direction:column;
-                  align-items:flex-end;
-                  gap:4px
-                "
+                class="conv-item"
+                data-uid="${Number(
+                  c.user_id,
+                )}"
+                data-name="${name}"
               >
 
-                <div class="conv-time">
-                  ${time}
+                <div class="conv-avatar">
+                  ${avatarContent}
                 </div>
 
-                ${unread}
+                <div class="conv-info">
+
+                  <div class="conv-name">
+                    ${name}
+                    ${premiumBadge}
+                  </div>
+
+                  <div class="conv-last">
+                    ${last}
+                  </div>
+
+                </div>
+
+                <div
+                  style="
+                    display:flex;
+                    flex-direction:column;
+                    align-items:flex-end;
+                    gap:4px
+                  "
+                >
+
+                  <div class="conv-time">
+                    ${time}
+                  </div>
+
+                  ${unread}
+
+                </div>
 
               </div>
-
-            </div>
-          `;
-
-        })
+            `;
+          },
+        )
         .join("");
 
-    document
+    container
       .querySelectorAll(
-        ".conv-item"
+        ".conv-item",
       )
-      .forEach(el => {
+      .forEach(
+        el => {
 
-        el.onclick =
-          () =>
-            openAdminChat(
-              el.dataset.uid,
-              el.dataset.name,
-              d.conversations.find(
-                c =>
-                  String(c.user_id) ===
-                  el.dataset.uid
-              )
-            );
-      });
+          el.onclick =
+            () => {
+
+              const uid =
+                el.dataset.uid;
+
+              const user =
+                conversations.find(
+                  c =>
+                    String(
+                      c.user_id,
+                    ) ===
+                    String(uid),
+                );
+
+              openAdminChat(
+                uid,
+                el.dataset.name,
+                user,
+              );
+            };
+        },
+      );
 
   } catch (e) {
 
-    toast(e.message);
+    console.error(
+      "loadConversations:",
+      e,
+    );
+
+    container.innerHTML =
+      `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div>Unable to load conversations</div>
+      </div>
+      `;
+
+    toast(
+      e.message,
+    );
   }
 }
+
+/* ══════════════════════════════════════
+   ADMIN USERS
+   ══════════════════════════════════════ */
 
 async function loadUsers() {
 
-  $("usersList").innerHTML =
+  const container =
+    $("usersList");
+
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML =
     '<div class="spinner"></div>';
 
   try {
 
     const d =
       await api(
-        "/admin-users"
+        "/admin-users",
       );
 
-    if (!d.users?.length) {
+    const users =
+      d.users ||
+      [];
 
-      $("usersList").innerHTML =
-        '<div class="empty-state"><div class="empty-icon">👥</div><div>No users yet</div></div>';
+    if (!users.length) {
+
+      container.innerHTML =
+        `
+        <div class="empty-state">
+          <div class="empty-icon">👥</div>
+          <div>No users yet</div>
+        </div>
+        `;
 
       return;
     }
 
-    $("usersList").innerHTML =
-      d.users
-        .map(u => {
+    container.innerHTML =
+      users
+        .map(
+          u => {
 
-          const name =
-            escapeHtml(
-              u.first_name ||
-              u.username ||
-              String(u.id)
-            );
+            const name =
+              escapeHtml(
+                u.first_name ||
+                u.username ||
+                String(
+                  u.id,
+                ),
+              );
 
-          const badgeCls =
-            u.is_banned
-              ? "banned"
-              : u.subscription?.active
-                ? "premium"
-                : "free";
+            const isPremium =
+              u.subscription
+                ?.active ===
+              true;
 
-          const badgeTxt =
-            u.is_banned
-              ? "Banned"
-              : u.subscription?.active
-                ? "⭐ Premium"
-                : "Free";
+            const badgeCls =
+              u.is_banned
+                ? "banned"
+                : isPremium
+                  ? "premium"
+                  : "free";
 
-          const avatarLetter =
-            (
-              u.first_name ||
-              "?"
-            )[0].toUpperCase();
+            const badgeTxt =
+              u.is_banned
+                ? "Banned"
+                : isPremium
+                  ? "⭐ Premium"
+                  : "Free";
 
-          const avatarContent =
-            u.avatar_url
-              ? `<img src="${escapeHtml(u.avatar_url)}" alt="">`
-              : avatarLetter;
+            const avatarLetter =
+              (
+                u.first_name ||
+                "?"
+              )[0]
+                .toUpperCase();
 
-          return `
-            <div class="user-row">
+            const avatarContent =
+              u.avatar_url
+                ? `
+                  <img
+                    src="${escapeHtml(
+                      u.avatar_url,
+                    )}"
+                    alt=""
+                  >
+                `
+                : avatarLetter;
 
-              <div
-                class="conv-avatar"
-                style="
-                  width:40px;
-                  height:40px;
-                  font-size:15px
-                "
-              >
-                ${avatarContent}
-              </div>
+            return `
+              <div class="user-row">
 
-              <div class="user-row-info">
-
-                <div class="user-row-name">
-                  ${name}
-                  <span class="badge ${badgeCls}">
-                    ${badgeTxt}
-                  </span>
+                <div
+                  class="conv-avatar"
+                  style="
+                    width:40px;
+                    height:40px;
+                    font-size:15px
+                  "
+                >
+                  ${avatarContent}
                 </div>
 
-                <div class="user-row-sub">
-                  ID: ${u.id}${
-                    u.username
-                      ? " · @" +
-                        escapeHtml(
-                          u.username
-                        )
-                      : ""
+                <div class="user-row-info">
+
+                  <div class="user-row-name">
+
+                    ${name}
+
+                    <span
+                      class="badge ${badgeCls}"
+                    >
+                      ${badgeTxt}
+                    </span>
+
+                  </div>
+
+                  <div class="user-row-sub">
+
+                    ID: ${Number(
+                      u.id,
+                    )}
+
+                    ${
+                      u.username
+                        ? " · @" +
+                          escapeHtml(
+                            u.username,
+                          )
+                        : ""
+                    }
+
+                  </div>
+
+                </div>
+
+                <div class="user-row-actions">
+
+                  ${
+                    !u.is_banned
+                      ? `
+                        <button
+                          class="admin-action-btn success"
+                          onclick="adminGrant(${Number(
+                            u.id,
+                          )})"
+                          title="Grant Lifetime Premium"
+                        >
+                          ⭐
+                        </button>
+
+                        <button
+                          class="admin-action-btn danger"
+                          onclick="adminBan(${Number(
+                            u.id,
+                          )})"
+                          title="Ban User"
+                        >
+                          🚫
+                        </button>
+                      `
+                      : `
+                        <button
+                          class="admin-action-btn"
+                          onclick="adminUnban(${Number(
+                            u.id,
+                          )})"
+                          title="Unban User"
+                        >
+                          ✅
+                        </button>
+                      `
                   }
+
                 </div>
 
               </div>
-
-              <div class="user-row-actions">
-
-                ${
-                  !u.is_banned
-
-                    ? `
-                      <button
-                        class="admin-action-btn success"
-                        onclick="adminGrant(${u.id})"
-                      >
-                        ⭐
-                      </button>
-
-                      <button
-                        class="admin-action-btn danger"
-                        onclick="adminBan(${u.id})"
-                      >
-                        🚫
-                      </button>
-                    `
-
-                    : `
-                      <button
-                        class="admin-action-btn"
-                        onclick="adminUnban(${u.id})"
-                      >
-                        ✅
-                      </button>
-                    `
-                }
-
-              </div>
-
-            </div>
-          `;
-
-        })
+            `;
+          },
+        )
         .join("");
 
   } catch (e) {
 
-    toast(e.message);
+    console.error(
+      "loadUsers:",
+      e,
+    );
+
+    toast(
+      e.message,
+    );
   }
 }
+
+/* ══════════════════════════════════════
+   ADMIN STATS
+   ══════════════════════════════════════ */
 
 async function loadStats() {
 
@@ -1425,37 +2422,69 @@ async function loadStats() {
 
     const d =
       await api(
-        "/admin-stats"
+        "/admin-stats",
       );
 
-    $("statTotal").textContent =
-      d.total_users ?? "—";
+    if ($("statTotal")) {
+      $("statTotal").textContent =
+        d.total_users ??
+        "—";
+    }
 
-    $("statPremium").textContent =
-      d.premium_users ?? "—";
+    if ($("statPremium")) {
+      $("statPremium").textContent =
+        d.premium_users ??
+        "—";
+    }
 
-    $("statMsgs").textContent =
-      d.total_messages ?? "—";
+    if ($("statMsgs")) {
+      $("statMsgs").textContent =
+        d.total_messages ??
+        "—";
+    }
 
-    $("statRevenue").textContent =
-      d.revenue_stars ?? "—";
+    if ($("statRevenue")) {
+      $("statRevenue").textContent =
+        d.revenue_stars ??
+        "—";
+    }
 
-    $("statBanned").textContent =
-      d.banned_users ?? "—";
+    if ($("statBanned")) {
+      $("statBanned").textContent =
+        d.banned_users ??
+        "—";
+    }
 
-    $("statActive").textContent =
-      d.active_today ?? "—";
+    if ($("statActive")) {
+      $("statActive").textContent =
+        d.active_today ??
+        "—";
+    }
 
   } catch (e) {
-    /* silent */
+
+    console.error(
+      "loadStats:",
+      e,
+    );
   }
 }
+
+/* ══════════════════════════════════════
+   OPEN ADMIN CHAT
+   ══════════════════════════════════════ */
 
 async function openAdminChat(
   uid,
   name,
-  userData
+  userData,
 ) {
+
+  if (
+    !isCurrentUserAdmin()
+  ) {
+    return;
+  }
 
   state.adminUserId =
     String(uid);
@@ -1463,79 +2492,153 @@ async function openAdminChat(
   state.adminUserData =
     userData || {};
 
-  $("adminChatName")
-    .textContent =
-    name || "User";
+  if ($("adminChatName")) {
+    $("adminChatName").textContent =
+      name ||
+      "User";
+  }
 
-  $("adminChatSub")
-    .textContent =
-    "User ID: " + uid;
+  if ($("adminChatSub")) {
+    $("adminChatSub").textContent =
+      "User ID: " +
+      uid;
+  }
 
   const avatarEl =
     $("adminChatAvatar");
 
-  if (
-    userData?.avatar_url
-  ) {
+  if (avatarEl) {
 
-    avatarEl.innerHTML =
-      `<img src="${escapeHtml(userData.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    if (
+      userData?.avatar_url
+    ) {
 
-  } else {
+      avatarEl.innerHTML =
+        `
+        <img
+          src="${escapeHtml(
+            userData.avatar_url,
+          )}"
+          alt=""
+          style="
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            border-radius:50%
+          "
+        >
+        `;
 
-    avatarEl.textContent =
-      (name || "?")[0]
-        .toUpperCase();
+    } else {
+
+      avatarEl.textContent =
+        (
+          name ||
+          "?"
+        )[0]
+          .toUpperCase();
+    }
   }
 
-  $("adminBanBtn")
-    .textContent =
-    userData?.is_banned
-      ? "✅ Unban"
-      : "🚫 Ban";
+  /*
+    Ban button.
+  */
 
-  $("adminBanBtn").onclick =
-    () =>
+  const banBtn =
+    $("adminBanBtn");
+
+  if (banBtn) {
+
+    banBtn.textContent =
       userData?.is_banned
-        ? adminUnban(uid)
-        : adminBan(uid);
+        ? "✅ Unban"
+        : "🚫 Ban";
 
-  $("adminChat")
-    .classList
-    .add("open");
+    banBtn.onclick =
+      () =>
+        userData?.is_banned
+          ? adminUnban(
+              uid,
+            )
+          : adminBan(
+              uid,
+            );
+  }
+
+  const adminChat =
+    $("adminChat");
+
+  if (adminChat) {
+    adminChat.classList.add(
+      "open",
+    );
+  }
 
   await loadAdminMessages();
 }
 
+/* ══════════════════════════════════════
+   LOAD ADMIN MESSAGES
+   ══════════════════════════════════════ */
+
 async function loadAdminMessages() {
+
+  if (
+    !state.adminUserId
+  ) {
+    return;
+  }
 
   try {
 
     const d =
       await api(
         "/admin-messages?user_id=" +
-        encodeURIComponent(
-          state.adminUserId
-        )
+          encodeURIComponent(
+            state.adminUserId,
+          ),
       );
 
     renderMessages(
       $("adminChatMessages"),
-      d.messages,
-      state.me.id,
-      true
+      d.messages || [],
+      Number(
+        state.me?.id,
+      ),
+      true,
     );
 
   } catch (e) {
 
-    toast(e.message);
+    console.error(
+      "loadAdminMessages:",
+      e,
+    );
+
+    toast(
+      e.message,
+    );
   }
 }
 
+/* ══════════════════════════════════════
+   SEND ADMIN MESSAGE
+   ══════════════════════════════════════ */
+
 async function sendAdminMessage() {
+
+  if (
+    !isCurrentUserAdmin()
+  ) {
+    return;
+  }
 
   const input =
     $("adminMessageInput");
+
+  if (!input) {
+    return;
+  }
 
   const text =
     input.value.trim();
@@ -1547,39 +2650,95 @@ async function sendAdminMessage() {
     return;
   }
 
-  input.value = "";
+  if (
+    text.length >
+    4000
+  ) {
 
-  autoResize(input);
+    toast(
+      "Message too long.",
+    );
+
+    return;
+  }
+
+  input.value =
+    "";
+
+  autoResize(
+    input,
+  );
 
   try {
 
     await api(
       "/admin-messages",
       {
-        method: "POST",
-        body: JSON.stringify({
-          user_id:
-            Number(
-              state.adminUserId
-            ),
-          text
-        })
-      }
+        method:
+          "POST",
+
+        body:
+          JSON.stringify({
+            user_id:
+              Number(
+                state.adminUserId,
+              ),
+
+            text:
+              text,
+          }),
+      },
     );
 
     await loadAdminMessages();
 
+    /*
+      Refresh inbox preview.
+    */
+
+    if (
+      state.adminTab ===
+      "chats"
+    ) {
+
+      loadConversations()
+        .catch(
+          () => {},
+        );
+    }
+
   } catch (e) {
 
-    toast(e.message);
+    /*
+      Restore failed message.
+    */
+
+    input.value =
+      text;
+
+    autoResize(
+      input,
+    );
+
+    toast(
+      e.message,
+    );
   }
 }
 
-/* Admin power actions */
+/* ══════════════════════════════════════
+   ADMIN GRANT LIFETIME PREMIUM
+   ══════════════════════════════════════ */
 
 async function adminGrant(
-  userId
+  userId,
 ) {
+
+  if (
+    !isCurrentUserAdmin()
+  ) {
+    return;
+  }
 
   showConfirm(
     "Grant Premium?",
@@ -1591,36 +2750,54 @@ async function adminGrant(
         await api(
           "/admin-grant",
           {
-            method: "POST",
-            body: JSON.stringify({
-              user_id: userId
-            })
-          }
+            method:
+              "POST",
+
+            body:
+              JSON.stringify({
+                user_id:
+                  Number(
+                    userId,
+                  ),
+              }),
+          },
         );
 
         toast(
-          "⭐ Premium granted!"
+          "⭐ Premium granted!",
         );
 
         if (
           state.adminTab ===
           "users"
         ) {
-          loadUsers();
+          await loadUsers();
         }
 
       } catch (e) {
 
-        toast(e.message);
+        toast(
+          e.message,
+        );
       }
     },
-    true
+    true,
   );
 }
 
+/* ══════════════════════════════════════
+   ADMIN BAN
+   ══════════════════════════════════════ */
+
 async function adminBan(
-  userId
+  userId,
 ) {
+
+  if (
+    !isCurrentUserAdmin()
+  ) {
+    return;
+  }
 
   showConfirm(
     "Ban User?",
@@ -1632,185 +2809,317 @@ async function adminBan(
         await api(
           "/admin-ban",
           {
-            method: "POST",
-            body: JSON.stringify({
-              user_id: userId
-            })
-          }
+            method:
+              "POST",
+
+            body:
+              JSON.stringify({
+                user_id:
+                  Number(
+                    userId,
+                  ),
+              }),
+          },
         );
 
         toast(
-          "🚫 User banned."
+          "🚫 User banned.",
         );
 
         if (
           state.adminTab ===
           "users"
         ) {
-          loadUsers();
+          await loadUsers();
         }
 
+        /*
+          Update currently open
+          admin chat button.
+        */
+
         if (
-          $("adminChat")
-            .classList
-            .contains("open")
+          $("adminChat") &&
+          $("adminChat").classList.contains(
+            "open",
+          )
         ) {
-          $("adminBanBtn")
-            .textContent =
-            "✅ Unban";
+
+          if (
+            $("adminBanBtn")
+          ) {
+
+            $("adminBanBtn").textContent =
+              "✅ Unban";
+
+            $("adminBanBtn").onclick =
+              () =>
+                adminUnban(
+                  userId,
+                );
+          }
         }
 
       } catch (e) {
 
-        toast(e.message);
+        toast(
+          e.message,
+        );
       }
     },
-    false
+    false,
   );
 }
 
+/* ══════════════════════════════════════
+   ADMIN UNBAN
+   ══════════════════════════════════════ */
+
 async function adminUnban(
-  userId
+  userId,
 ) {
+
+  if (
+    !isCurrentUserAdmin()
+  ) {
+    return;
+  }
 
   try {
 
     await api(
       "/admin-unban",
       {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: userId
-        })
-      }
+        method:
+          "POST",
+
+        body:
+          JSON.stringify({
+            user_id:
+              Number(
+                userId,
+              ),
+          }),
+      },
     );
 
     toast(
-      "✅ User unbanned."
+      "✅ User unbanned.",
     );
 
     if (
       state.adminTab ===
       "users"
     ) {
-      loadUsers();
+      await loadUsers();
     }
 
     if (
-      $("adminChat")
-        .classList
-        .contains("open")
+      $("adminChat") &&
+      $("adminChat").classList.contains(
+        "open",
+      )
     ) {
-      $("adminBanBtn")
-        .textContent =
-        "🚫 Ban";
+
+      if (
+        $("adminBanBtn")
+      ) {
+
+        $("adminBanBtn").textContent =
+          "🚫 Ban";
+
+        $("adminBanBtn").onclick =
+          () =>
+            adminBan(
+              userId,
+            );
+      }
     }
 
   } catch (e) {
 
-    toast(e.message);
+    toast(
+      e.message,
+    );
   }
 }
 
-/* ══ Confirm Modal ══ */
+/* ══════════════════════════════════════
+   CONFIRM MODAL
+   ══════════════════════════════════════ */
 
 function showConfirm(
   title,
   body,
   onConfirm,
-  safe = false
+  safe = false,
 ) {
 
-  $("confirmTitle")
-    .textContent =
-    title;
+  if ($("confirmTitle")) {
+    $("confirmTitle").textContent =
+      title;
+  }
 
-  $("confirmBody")
-    .textContent =
-    body;
+  if ($("confirmBody")) {
+    $("confirmBody").textContent =
+      body;
+  }
 
-  $("confirmModal")
-    .classList
-    .remove("hidden");
+  const modal =
+    $("confirmModal");
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.remove(
+    "hidden",
+  );
 
   const okBtn =
     $("confirmOk");
 
-  okBtn.className =
-    "modal-btn " +
-    (safe
-      ? "confirm-safe"
-      : "confirm");
+  const cancelBtn =
+    $("confirmCancel");
 
-  okBtn.onclick =
-    () => {
+  if (okBtn) {
 
-      $("confirmModal")
-        .classList
-        .add("hidden");
+    okBtn.className =
+      "modal-btn " +
+      (
+        safe
+          ? "confirm-safe"
+          : "confirm"
+      );
 
-      onConfirm();
-    };
+    okBtn.onclick =
+      () => {
 
-  $("confirmCancel")
-    .onclick =
-    () =>
-      $("confirmModal")
-        .classList
-        .add("hidden");
+        modal.classList.add(
+          "hidden",
+        );
+
+        try {
+          onConfirm();
+        } catch (e) {
+          console.error(e);
+        }
+      };
+  }
+
+  if (cancelBtn) {
+
+    cancelBtn.onclick =
+      () =>
+        modal.classList.add(
+          "hidden",
+        );
+  }
 }
 
-/* ══ Event Listeners ══ */
+/* ══════════════════════════════════════
+   EVENT LISTENERS
+   ══════════════════════════════════════ */
 
-$("openChatBtn").onclick =
-  openChat;
+const openChatBtn =
+  $("openChatBtn");
 
-$("subscribeBtn").onclick =
-  subscribe;
+if (openChatBtn) {
+  openChatBtn.onclick =
+    openChat;
+}
 
-$("editProfileBtn").onclick =
-  openProfileEdit;
+const subscribeBtn =
+  $("subscribeBtn");
 
-$("cancelProfileBtn").onclick =
-  closeProfileEdit;
+if (subscribeBtn) {
+  subscribeBtn.onclick =
+    subscribe;
+}
 
-$("saveProfileBtn").onclick =
-  saveProfile;
+const editProfileBtn =
+  $("editProfileBtn");
 
-$("profileSheet")
-  .addEventListener(
+if (editProfileBtn) {
+  editProfileBtn.onclick =
+    openProfileEdit;
+}
+
+const cancelProfileBtn =
+  $("cancelProfileBtn");
+
+if (cancelProfileBtn) {
+  cancelProfileBtn.onclick =
+    closeProfileEdit;
+}
+
+const saveProfileBtn =
+  $("saveProfileBtn");
+
+if (saveProfileBtn) {
+  saveProfileBtn.onclick =
+    saveProfile;
+}
+
+const profileSheet =
+  $("profileSheet");
+
+if (profileSheet) {
+
+  profileSheet.addEventListener(
     "click",
     e => {
+
       if (
         e.target ===
-        $("profileSheet")
+        profileSheet
       ) {
+
         closeProfileEdit();
       }
-    }
+    },
   );
+}
 
-$("sendBtn").onclick =
-  sendMessage;
+/* ══════════════════════════════════════
+   USER MESSAGE INPUT
+   ══════════════════════════════════════ */
 
-$("messageInput")
-  .addEventListener(
+const sendBtn =
+  $("sendBtn");
+
+if (sendBtn) {
+  sendBtn.onclick =
+    sendMessage;
+}
+
+const messageInput =
+  $("messageInput");
+
+if (messageInput) {
+
+  messageInput.addEventListener(
     "input",
     e => {
-      autoResize(e.target);
 
-      $("sendBtn").disabled =
-        !e.target.value.trim();
-    }
+      autoResize(
+        e.target,
+      );
+
+      if (sendBtn) {
+        sendBtn.disabled =
+          !e.target.value.trim();
+      }
+    },
   );
 
-$("messageInput")
-  .addEventListener(
+  messageInput.addEventListener(
     "keydown",
     e => {
 
       if (
-        e.key === "Enter" &&
+        e.key ===
+          "Enter" &&
         !e.shiftKey
       ) {
 
@@ -1818,60 +3127,178 @@ $("messageInput")
 
         sendMessage();
       }
-    }
+    },
   );
+}
 
-$("cancelEditBtn").onclick =
-  clearEditMode;
+/* ══════════════════════════════════════
+   CANCEL EDIT
+   ══════════════════════════════════════ */
 
-$("backBtn").onclick =
-  () => {
+const cancelEditBtn =
+  $("cancelEditBtn");
 
-    clearInterval(
-      state.poll
-    );
+if (cancelEditBtn) {
+  cancelEditBtn.onclick =
+    clearEditMode;
+}
 
-    clearEditMode();
+/* ══════════════════════════════════════
+   USER BACK
+   ══════════════════════════════════════ */
 
-    show("homeView");
-  };
+const backBtn =
+  $("backBtn");
 
-$("adminBtn").onclick =
-  openAdmin;
+if (backBtn) {
 
-$("adminBackBtn").onclick =
-  () =>
-    show("homeView");
+  backBtn.onclick =
+    () => {
 
-$("adminChatBackBtn").onclick =
-  () =>
-    $("adminChat")
-      .classList
-      .remove("open");
+      clearInterval(
+        state.poll,
+      );
 
-$("adminGrantBtn").onclick =
-  () =>
-    adminGrant(
-      state.adminUserId
-    );
+      clearEditMode();
 
-$("adminSendBtn").onclick =
-  sendAdminMessage;
+      show(
+        "homeView",
+      );
+    };
+}
 
-$("adminMessageInput")
-  .addEventListener(
+/* ══════════════════════════════════════
+   ADMIN BUTTON
+   ══════════════════════════════════════ */
+
+const adminBtn =
+  $("adminBtn");
+
+if (adminBtn) {
+  adminBtn.onclick =
+    openAdmin;
+}
+
+/* ══════════════════════════════════════
+   ADMIN BACK
+   ══════════════════════════════════════ */
+
+const adminBackBtn =
+  $("adminBackBtn");
+
+if (adminBackBtn) {
+
+  adminBackBtn.onclick =
+    () => {
+
+      const adminChat =
+        $("adminChat");
+
+      if (adminChat) {
+        adminChat.classList.remove(
+          "open",
+        );
+      }
+
+      show(
+        "homeView",
+      );
+    };
+}
+
+/* ══════════════════════════════════════
+   ADMIN CHAT BACK
+   ══════════════════════════════════════ */
+
+const adminChatBackBtn =
+  $("adminChatBackBtn");
+
+if (adminChatBackBtn) {
+
+  adminChatBackBtn.onclick =
+    () => {
+
+      const adminChat =
+        $("adminChat");
+
+      if (adminChat) {
+        adminChat.classList.remove(
+          "open",
+        );
+      }
+
+      /*
+        Refresh conversation list
+        after returning.
+      */
+
+      if (
+        state.adminTab ===
+        "chats"
+      ) {
+        loadConversations()
+          .catch(
+            () => {},
+          );
+      }
+    };
+}
+
+/* ══════════════════════════════════════
+   ADMIN GRANT BUTTON
+   ══════════════════════════════════════ */
+
+const adminGrantBtn =
+  $("adminGrantBtn");
+
+if (adminGrantBtn) {
+
+  adminGrantBtn.onclick =
+    () => {
+
+      if (
+        state.adminUserId
+      ) {
+
+        adminGrant(
+          state.adminUserId,
+        );
+      }
+    };
+}
+
+/* ══════════════════════════════════════
+   ADMIN SEND
+   ══════════════════════════════════════ */
+
+const adminSendBtn =
+  $("adminSendBtn");
+
+if (adminSendBtn) {
+  adminSendBtn.onclick =
+    sendAdminMessage;
+}
+
+const adminMessageInput =
+  $("adminMessageInput");
+
+if (adminMessageInput) {
+
+  adminMessageInput.addEventListener(
     "input",
     e =>
-      autoResize(e.target)
+      autoResize(
+        e.target,
+      ),
   );
 
-$("adminMessageInput")
-  .addEventListener(
+  adminMessageInput.addEventListener(
     "keydown",
     e => {
 
       if (
-        e.key === "Enter" &&
+        e.key ===
+          "Enter" &&
         !e.shiftKey
       ) {
 
@@ -1879,41 +3306,76 @@ $("adminMessageInput")
 
         sendAdminMessage();
       }
-    }
+    },
   );
+}
+
+/* ══════════════════════════════════════
+   ADMIN TABS
+   ══════════════════════════════════════ */
 
 document
   .querySelectorAll(
-    ".admin-tab"
+    ".admin-tab",
   )
-  .forEach(tab => {
+  .forEach(
+    tab => {
 
-    tab.onclick =
-      () =>
-        switchAdminTab(
-          tab.dataset.tab
-        );
-  });
+      tab.onclick =
+        () =>
+          switchAdminTab(
+            tab.dataset.tab,
+          );
+    },
+  );
 
-/* Close ctx menu on outside tap */
+/* ══════════════════════════════════════
+   CLOSE CONTEXT MENU
+   ══════════════════════════════════════ */
 
 document.addEventListener(
   "click",
   e => {
 
+    const ctx =
+      $("msgCtx");
+
     if (
+      ctx &&
       !e.target.closest(
-        ".msg-ctx"
+        ".msg-ctx",
       )
     ) {
 
-      $("msgCtx")
-        .classList
-        .add("hidden");
+      ctx.classList.add(
+        "hidden",
+      );
     }
-  }
+  },
 );
 
-/* ── Boot ── */
+/* ══════════════════════════════════════
+   TELEGRAM VIEWPORT
+   ══════════════════════════════════════ */
+
+if (tg) {
+
+  try {
+
+    tg.onEvent?.(
+      "viewportChanged",
+      () => {
+        try {
+          tg.expand();
+        } catch {}
+      },
+    );
+
+  } catch {}
+}
+
+/* ══════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════ */
 
 loadMe();
