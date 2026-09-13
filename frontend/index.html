@@ -9,64 +9,192 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <div id="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="avatar" id="brandAvatar">S</div>
-        <div>
-          <div class="brand-title">Sanya</div>
-          <div class="brand-sub" id="statusText">Messenger</div>
+<div id="app">
+
+  <!-- ── Top Bar ── -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-avatar" id="brandAvatar">S<img id="brandAvatarImg" src="" alt="" style="display:none"></div>
+      <div>
+        <div class="brand-title" id="brandName">Sanya</div>
+        <div class="brand-sub" id="statusText">Messenger</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button id="adminBtn" class="icon-btn hidden" aria-label="Admin Panel" title="Admin">
+        <!-- Shield icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ HOME VIEW ══ -->
+  <section id="homeView" class="view">
+    <div class="hero">
+      <div class="hero-avatar-wrap" id="heroAvatarWrap">
+        <div class="hero-avatar" id="heroAvatar">S<img id="heroAvatarImg" src="" alt="" style="display:none"></div>
+        <div class="hero-avatar-edit" id="heroAvatarEdit" title="Change photo">📷</div>
+      </div>
+      <div class="hero-name" id="heroName">Sanya</div>
+      <div class="hero-bio" id="heroBio">Private messaging inside Telegram.</div>
+      <div class="hero-username" id="heroUsername"></div>
+
+      <div id="planBadge" class="plan-badge">Checking…</div>
+
+      <button id="openChatBtn" class="primary-btn">💬 Open Messages</button>
+      <button id="subscribeBtn" class="secondary-btn hidden">⭐ Get Premium · 199 Stars</button>
+      <button id="editProfileBtn" class="ghost-btn">✏️ Edit Profile</button>
+    </div>
+  </section>
+
+  <!-- ══ CHAT VIEW ══ -->
+  <section id="chatView" class="view hidden">
+    <div class="chat-head">
+      <button class="icon-btn" id="backBtn" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="mini-avatar" id="chatMiniAvatar">S<img id="chatMiniAvatarImg" src="" alt="" style="display:none"></div>
+      <div class="chat-head-info">
+        <strong id="chatHeadName">Sanya</strong>
+        <small id="chatHeadStatus">Private chat</small>
+      </div>
+    </div>
+
+    <div id="messages" class="messages"></div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <div id="editBanner" class="edit-banner hidden">
+          <span>✏️ Editing message</span>
+          <button id="cancelEditBtn">✕</button>
+        </div>
+        <textarea id="messageInput" maxlength="4000" placeholder="Message…" rows="1" autocomplete="off"></textarea>
+      </div>
+      <button id="sendBtn" class="send-btn" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ══ ADMIN VIEW ══ -->
+  <section id="adminView" class="view hidden">
+    <div class="admin-head">
+      <button class="icon-btn" id="adminBackBtn" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2>Admin Panel</h2>
+    </div>
+
+    <div class="admin-tab-bar">
+      <div class="admin-tab active" data-tab="chats">💬 Chats</div>
+      <div class="admin-tab" data-tab="users">👥 Users</div>
+      <div class="admin-tab" data-tab="stats">📊 Stats</div>
+    </div>
+
+    <!-- Tab: Chats -->
+    <div id="tabChats" class="conversation-list"></div>
+
+    <!-- Tab: Users -->
+    <div id="tabUsers" class="hidden">
+      <div class="admin-section-title">All Users</div>
+      <div id="usersList"></div>
+    </div>
+
+    <!-- Tab: Stats -->
+    <div id="tabStats" class="hidden">
+      <div class="admin-stats">
+        <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Users</div></div>
+        <div class="stat-card"><div class="stat-num" id="statPremium">—</div><div class="stat-label">Premium</div></div>
+        <div class="stat-card"><div class="stat-num" id="statMsgs">—</div><div class="stat-label">Messages</div></div>
+      </div>
+      <div class="admin-section-title">Today's Revenue</div>
+      <div class="admin-stats">
+        <div class="stat-card"><div class="stat-num" id="statRevenue">—</div><div class="stat-label">⭐ Stars</div></div>
+        <div class="stat-card"><div class="stat-num" id="statBanned">—</div><div class="stat-label">Banned</div></div>
+        <div class="stat-card"><div class="stat-num" id="statActive">—</div><div class="stat-label">Active</div></div>
+      </div>
+    </div>
+
+    <!-- Admin Chat Slide Panel -->
+    <div id="adminChat">
+      <div class="admin-chat-head">
+        <button class="icon-btn" id="adminChatBackBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="mini-avatar" id="adminChatAvatar">?</div>
+        <div class="admin-chat-head-info">
+          <strong id="adminChatName">User</strong>
+          <small id="adminChatSub">User ID: —</small>
+        </div>
+        <div class="admin-actions">
+          <button class="admin-action-btn success" id="adminGrantBtn">⭐ Grant</button>
+          <button class="admin-action-btn danger" id="adminBanBtn">🚫 Ban</button>
         </div>
       </div>
-      <button id="adminBtn" class="icon-btn hidden" aria-label="Admin">☰</button>
-    </header>
+      <div id="adminChatMessages" class="messages"></div>
+      <div class="composer">
+        <div class="composer-inner">
+          <textarea id="adminMessageInput" maxlength="4000" placeholder="Reply as Sanya…" rows="1"></textarea>
+        </div>
+        <button id="adminSendBtn" class="send-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
 
-    <main>
-      <section id="homeView" class="view">
-        <div class="hero">
-          <div class="hero-avatar">S</div>
-          <h1>Message Sanya</h1>
-          <p>Private messaging inside Telegram.</p>
-          <div id="planBadge" class="plan-badge">Checking Premium…</div>
-          <button id="openChatBtn" class="primary-btn">Open Messages</button>
-          <button id="subscribeBtn" class="secondary-btn">Get Premium · 199 ⭐</button>
+  <!-- ══ PROFILE EDIT SHEET ══ -->
+  <div id="profileSheet" class="sheet-backdrop hidden" role="dialog">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Edit Profile</div>
+      <div class="sheet-body">
+        <div class="avatar-upload-wrap">
+          <div class="avatar-upload-preview" id="sheetAvatarPreview">S<img id="sheetAvatarImg" src="" alt="" style="display:none"></div>
+          <label class="avatar-upload-label" for="avatarFileInput">Change Photo</label>
+          <input type="file" id="avatarFileInput" accept="image/*">
         </div>
-      </section>
-
-      <section id="chatView" class="view hidden">
-        <div class="chat-head">
-          <button id="backBtn" class="icon-btn">‹</button>
-          <div class="mini-avatar">S</div>
-          <div>
-            <strong>Sanya</strong>
-            <small>Private chat</small>
-          </div>
+        <div>
+          <div class="field-label">Display Name</div>
+          <input class="field-input" id="editName" placeholder="Your name" maxlength="64">
         </div>
-        <div id="messages" class="messages"></div>
-        <div id="composer" class="composer">
-          <input id="messageInput" maxlength="4000" placeholder="Message…" autocomplete="off">
-          <button id="sendBtn" class="send-btn">➤</button>
+        <div>
+          <div class="field-label">Bio</div>
+          <textarea class="field-input" id="editBio" placeholder="Tell something about yourself…" maxlength="160" rows="3"></textarea>
         </div>
-      </section>
-
-      <section id="adminView" class="view hidden">
-        <div class="admin-head">
-          <button id="adminBackBtn" class="icon-btn">‹</button>
-          <h2>Admin Inbox</h2>
+        <div>
+          <div class="field-label">Username</div>
+          <input class="field-input" id="editUsername" placeholder="@username" maxlength="32">
         </div>
-        <div id="conversationList" class="conversation-list"></div>
-        <div id="adminChat" class="admin-chat hidden">
-          <div id="adminChatMessages" class="messages"></div>
-          <div class="composer">
-            <input id="adminMessageInput" maxlength="4000" placeholder="Reply…">
-            <button id="adminSendBtn" class="send-btn">➤</button>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <div id="toast" class="toast hidden"></div>
+      </div>
+      <div class="sheet-actions">
+        <button class="ghost-btn" id="cancelProfileBtn">Cancel</button>
+        <button class="primary-btn" id="saveProfileBtn">Save</button>
+      </div>
+    </div>
   </div>
-  <script src="./app.js"></script>
+
+  <!-- ══ CONFIRM MODAL ══ -->
+  <div id="confirmModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-title" id="confirmTitle">Are you sure?</div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="confirmCancel">Cancel</button>
+        <button class="modal-btn confirm" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Message Context Menu ── -->
+  <div id="msgCtx" class="msg-ctx hidden"></div>
+
+  <!-- ── Toast ── -->
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+</div>
+
+<script src="./app.js"></script>
 </body>
 </html>
