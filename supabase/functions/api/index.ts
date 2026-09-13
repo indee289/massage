@@ -139,7 +139,7 @@ async function handler(req:Request){
       description:"30 days of private Premium messaging.",
       payload,
       currency:"XTR",
-      prices:[{label:"Premium — 30 Days",amount:299}],
+      prices:[{label:"Premium — 30 Days",amount:199}],
       subscription_period:2592000
     });
     return Response.json({invoice_url}, {headers: corsHeaders});
