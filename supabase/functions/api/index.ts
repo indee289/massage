@@ -318,7 +318,7 @@ Deno.serve(async (req: Request) => {
         description:   "30-day premium access to private messaging.",
         payload:       `premium_${uid}_${Date.now()}`,
         currency:      "XTR",
-        prices:        [{ label: "Premium", amount: 299 }],
+        prices:        [{ label: "Premium", amount: 199 }],
       }),
     });
     const d = await r.json();
