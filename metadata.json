@@ -1,0 +1,6 @@
+{
+  "name": "Sanya Messenger",
+  "description": "Private messaging inside Telegram.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

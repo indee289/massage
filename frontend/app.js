@@ -7,7 +7,7 @@
    ══════════════════════════════════════ */
 
 const tg = window.Telegram?.WebApp;
-const API = (window.SUPABASE_FUNCTION_URL || "https://emqseukhovnzgrmsvlag.supabase.co/functions/v1/api").replace(/\/$/, "");
+const API = (window.SUPABASE_FUNCTION_URL || "").replace(/\/$/, "");
 
 // The home screen always represents the owner/admin (Sanya), not the logged-in visitor.
 // The logged-in user data is still kept in state.me for authentication, subscription and profile editing.
@@ -41,7 +41,7 @@ if (tg) {
 const $ = id => document.getElementById(id);
 
 function initData() {
-  return tg?.initData || "";
+  return tg?.initData || "demo_web_preview";
 }
 
 function headers() {
@@ -94,6 +94,11 @@ function show(id) {
 
   const target = $(id);
   if (target) target.classList.remove("hidden");
+
+  const topbar = document.querySelector(".topbar");
+  if (topbar) {
+    topbar.style.display = id === "homeView" ? "flex" : "none";
+  }
 }
 
 function escapeHtml(s) {
@@ -1447,23 +1452,26 @@ async function loadUsers() {
                       <button
                         class="admin-action-btn success"
                         onclick="adminGrant(${u.id})"
+                        title="Grant Premium"
                       >
-                        ⭐
+                        <svg class="isax-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Grant
                       </button>
 
                       <button
                         class="admin-action-btn danger"
                         onclick="adminBan(${u.id})"
+                        title="Ban User"
                       >
-                        🚫
+                        <svg class="isax-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Ban
                       </button>
                     `
                     : `
                       <button
-                        class="admin-action-btn"
+                        class="admin-action-btn success"
                         onclick="adminUnban(${u.id})"
+                        title="Unban User"
                       >
-                        ✅
+                        <svg class="isax-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Unban
                       </button>
                     `
                 }

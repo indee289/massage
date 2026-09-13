@@ -1,0 +1,31 @@
+{
+  "name": "sanya-messenger",
+  "version": "1.0.0",
+  "description": "Private messaging inside Telegram",
+  "type": "module",
+  "main": "server.ts",
+  "scripts": {
+    "dev": "npm run build:frontend && tsx watch server.ts",
+    "start": "node --experimental-strip-types server.ts",
+    "build:frontend": "esbuild src/index.tsx --bundle --minify --outfile=frontend/bundle.js --jsx=automatic",
+    "build": "npm run build:frontend && tsc",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "lucide-react": "^1.45.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.7.2",
+    "typescript": "^5.4.5"
+  }
+}
