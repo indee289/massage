@@ -1,3 +1,12 @@
+export interface OwnerProfile {
+  id: number;
+  first_name: string;
+  username: string;
+  bio: string;
+  avatar_url: string | null;
+  is_admin: boolean;
+}
+
 export interface UserProfile {
   id: number;
   first_name: string | null;
@@ -12,6 +21,7 @@ export interface UserProfile {
     start: string | null;
     end: string | null;
   } | null;
+  owner?: OwnerProfile;
 }
 
 export interface Message {
