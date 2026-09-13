@@ -21,7 +21,6 @@
 //   POST   /admin-unban            (admin)
 
 import { createClient }  from "https://esm.sh/@supabase/supabase-js@2";
-import { validate, parse } from "https://deno.land/x/telegram_web_app@0.1.0/mod.ts";
 
 // ── Env ─────────────────────────────────────────────────────────────────────
 const TOKEN    = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
@@ -44,16 +43,72 @@ function err(msg: string, status = 400) {
 }
 
 // Validate Telegram initData and return user object
-function authUser(req: Request): { id: number; first_name: string; username?: string } | null {
+// IMPORTANT: Telegram initData is verified server-side using the Bot Token.
+async function authUser(req: Request): Promise<{ id: number; first_name: string; username?: string; last_name?: string } | null> {
   const initData = req.headers.get("x-telegram-init-data") ?? "";
   if (!initData) return null;
+
   try {
-    // In production: validate HMAC with BOT_TOKEN
-    // validate(initData, BOT_TOKEN); // uncomment if using the library
     const params = new URLSearchParams(initData);
+    const hash = params.get("hash");
+    if (!hash) return null;
+    params.delete("hash");
+
+    // Telegram Web App data-check-string
+    const dataCheckString = [...params.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n");
+
+    const encoder = new TextEncoder();
+
+    // Telegram Web App secret key:
+    // HMAC-SHA256(key="WebAppData", message=TELEGRAM_BOT_TOKEN)
+    const secretKey = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode("WebAppData"),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+
+    const keyBytes = await crypto.subtle.sign(
+      "HMAC",
+      secretKey,
+      encoder.encode(TOKEN),
+    );
+
+    const msgKey = await crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+
+    const sig = await crypto.subtle.sign(
+      "HMAC",
+      msgKey,
+      encoder.encode(dataCheckString),
+    );
+
+    const calculatedHash = [...new Uint8Array(sig)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    if (calculatedHash !== hash) return null;
+
+    // Reject stale initData. Telegram auth_date is Unix seconds.
+    const authDate = Number(params.get("auth_date"));
+    if (!authDate || Math.floor(Date.now() / 1000) - authDate > 86400) return null;
+
     const userStr = params.get("user");
     if (!userStr) return null;
-    return JSON.parse(userStr);
+
+    const user = JSON.parse(userStr);
+    if (!user?.id || !user?.first_name) return null;
+
+    return user;
   } catch {
     return null;
   }
@@ -135,7 +190,7 @@ Deno.serve(async (req: Request) => {
   const p2 = parts[2] ?? "";
 
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const tgUser = authUser(req);
+  const tgUser = await authUser(req);
   if (!tgUser) return err("Unauthorized — open from Telegram", 401);
 
   const user = await getOrCreateUser(tgUser);
