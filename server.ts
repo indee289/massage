@@ -225,6 +225,7 @@ router.get("/me", (req: Request, res: Response) => {
   const isAdmin = tgUser.id === ADMIN_TG || profile.user_id === 10001;
   const subscription = getSubscription(profile.user_id);
 
+  // Return authenticated user profile and owner profile (Sanya Chouhan)
   return res.json({
     id: profile.user_id,
     first_name: profile.first_name || tgUser.first_name || null,
@@ -234,6 +235,14 @@ router.get("/me", (req: Request, res: Response) => {
     avatar_url: profile.avatar_url || profile.photo_url || tgUser.photo_url || null,
     is_admin: isAdmin,
     subscription,
+    owner: {
+      id: ADMIN_TG || 10001,
+      first_name: "Sanya Chouhan",
+      username: "sanyachouhaan_bot",
+      bio: "Private messaging inside Telegram.",
+      avatar_url: null,
+      is_admin: true,
+    },
   });
 });
 
