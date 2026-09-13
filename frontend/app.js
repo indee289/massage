@@ -6,8 +6,7 @@
    ══════════════════════════════════════ */
 
 const tg = window.Telegram?.WebApp;
-const API = (window.SUPABASE_FUNCTION_URL || "https://YOUR_PROJECT_REF.supabase.co/functions/v1/api").replace(/\/$/, "");
-
+const API = "https://emqseukhovnzgrmsvlag.supabase.co/functions/v1/api";
 let state = {
   me: null,
   chatUserId: null,
