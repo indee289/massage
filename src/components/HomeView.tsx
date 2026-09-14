@@ -101,7 +101,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   className="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-500 to-amber-500 hover:opacity-95 text-white font-black text-sm shadow-xl shadow-pink-500/25 flex items-center justify-center gap-2 active:scale-97 transition-all disabled:opacity-60"
                 >
                   <Star className="w-4 h-4 fill-current text-amber-200 animate-bounce" />
-                  <span>{subscribing ? 'Processing Payment…' : 'Subscribe Premium (199 Stars)'}</span>
+                  <span>{subscribing ? 'Processing Payment…' : 'Subscribe Premium (99 Stars)'}</span>
                 </button>
 
                 <p className="text-[11px] font-medium text-slate-400 leading-tight">
