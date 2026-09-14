@@ -5,6 +5,8 @@ create table if not exists profiles (
   username text,
   first_name text,
   last_name text,
+  bio text,
+  avatar_url text,
   photo_url text,
   is_banned boolean not null default false,
   created_at timestamptz not null default now(),
@@ -27,6 +29,9 @@ create table if not exists messages (
   sender_id bigint not null,
   text text not null check (char_length(text) between 1 and 4000),
   created_at timestamptz not null default now(),
+  edited_at timestamptz,
+  deleted_at timestamptz,
+  seen_at timestamptz,
   read_at timestamptz
 );
 
@@ -46,8 +51,9 @@ create table if not exists payments (
 create table if not exists admin_actions (
   id uuid primary key default gen_random_uuid(),
   admin_id bigint not null,
-  action text not null,
   target_user_id bigint,
+  target_id bigint,
+  action text not null,
   details jsonb,
   created_at timestamptz not null default now()
 );

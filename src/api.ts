@@ -23,8 +23,15 @@ function getHeaders(): Record<string, string> {
 export const api = {
   async getMe(): Promise<UserProfile> {
     const res = await fetch('/api/me', { headers: getHeaders() });
-    if (!res.ok) throw new Error('Failed to load user profile');
-    return res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load user profile');
+    if (data.me) {
+      return {
+        ...data.me,
+        owner: data.owner,
+      };
+    }
+    return data;
   },
 
   async getMessages(): Promise<{ messages: Message[] }> {
@@ -106,8 +113,9 @@ export const api = {
       method: 'POST',
       headers: getHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to create invoice');
-    return res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to create invoice');
+    return data;
   },
 
   // Admin Endpoints

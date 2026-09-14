@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, X, Check, CheckCheck, Copy, Edit2, Trash2, Search, MessageSquare, Star, Ban } from 'lucide-react';
+import { ArrowLeft, Send, X, Check, CheckCheck, Copy, Edit2, Trash2, Search, MessageSquare, Star, Ban, Lock } from 'lucide-react';
 import { Message, UserProfile, Conversation } from '../types';
 import { api } from '../api';
 
@@ -167,7 +167,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const currentUserId = user?.id || 10001;
+  const currentUserId = user?.id;
 
   const filteredConversations = conversations.filter(
     (c) =>
@@ -334,8 +334,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }
 
   // Active Chat View (Regular User OR Admin Chatting with Selected User)
-  const chatPartnerName = isAdmin && selectedConv ? (selectedConv.first_name || `User #${selectedConv.user_id}`) : 'Sanya Chouhan';
-  const chatPartnerAvatar = isAdmin && selectedConv ? selectedConv.avatar_url : null;
+  const chatPartnerName = isAdmin && selectedConv
+    ? (selectedConv.first_name || `User #${selectedConv.user_id}`)
+    : (user?.owner?.first_name || 'Sanya Chouhan');
+  const chatPartnerAvatar = isAdmin && selectedConv
+    ? selectedConv.avatar_url
+    : (user?.owner?.avatar_url || null);
   const chatPartnerInitial = chatPartnerName.charAt(0).toUpperCase();
 
   return (
@@ -390,7 +394,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         ) : (
           activeMessages.map((msg, index) => {
-            const isMine = isAdmin ? msg.sender_id === 10001 : msg.sender_id === currentUserId;
+            const isMine = msg.sender_id === currentUserId;
             const prevMsg = activeMessages[index - 1];
             const showDate = !prevMsg || formatDateGroup(prevMsg.created_at) !== formatDateGroup(msg.created_at);
 
@@ -504,7 +508,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <span>Copy Text</span>
             </button>
 
-            {((isAdmin && selectedMsg.sender_id === 10001) || (!isAdmin && selectedMsg.sender_id === currentUserId)) && !selectedMsg.deleted_at && (
+            {selectedMsg.sender_id === currentUserId && !selectedMsg.deleted_at && (
               <>
                 <button
                   onClick={() => startEdit(selectedMsg)}

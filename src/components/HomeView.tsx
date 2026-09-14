@@ -19,6 +19,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
 }) => {
   const isPremium = Boolean(user?.subscription?.active || user?.is_admin);
 
+  const ownerName = user?.owner?.first_name || 'Sanya Chouhan';
+  const ownerBio = user?.owner?.bio || 'Official Telegram Bot for direct 1-on-1 private messaging.';
+  const ownerAvatar = user?.owner?.avatar_url;
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col items-center justify-center animate-fade-in space-y-4">
       {/* Instagram Bot Profile & Subscription Card */}
@@ -32,9 +36,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="relative mb-3.5">
             <div className="w-24 h-24 rounded-full p-[3px] bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shadow-lg shadow-rose-500/20">
               <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 p-[2px] overflow-hidden">
-                <div className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-500 flex items-center justify-center text-white font-black text-3xl">
-                  S
-                </div>
+                {ownerAvatar ? (
+                  <img src={ownerAvatar} alt="" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-500 flex items-center justify-center text-white font-black text-3xl">
+                    {ownerName.charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
             </div>
             <div className="absolute bottom-0 right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center text-white shadow-xs">
@@ -45,7 +53,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Sanya Name & Instagram Verified Badge */}
           <div className="flex items-center gap-1.5 justify-center">
             <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-              Sanya Chouhan
+              {ownerName}
             </h2>
             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-sky-500 text-white text-[9px] font-black" title="Verified Account">
               ✓
@@ -53,11 +61,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           <p className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-rose-500 mt-1">
-            Chat with Sanya
+            Chat with {ownerName}
           </p>
 
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 max-w-[250px] leading-relaxed">
-            Official Telegram Bot for direct 1-on-1 private messaging with Sanya Chouhan.
+            {ownerBio}
           </p>
 
           {/* Subscription Status Badge */}

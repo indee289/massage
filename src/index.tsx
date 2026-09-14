@@ -108,9 +108,20 @@ const App: React.FC = () => {
   const handleSubscribe = async () => {
     setSubscribing(true);
     try {
-      await api.createInvoice();
-      await loadProfile();
-      alert('⭐ Premium Plan Activated via Telegram Stars!');
+      const res = await api.createInvoice();
+      const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+      if (tg && typeof tg.openInvoice === 'function' && res.invoice_url) {
+        tg.openInvoice(res.invoice_url, async (status: string) => {
+          if (status === 'paid') {
+            await loadProfile();
+            alert('⭐ Premium activated for 30 days!');
+          }
+        });
+      } else if (res.invoice_url) {
+        window.open(res.invoice_url, '_blank');
+      } else {
+        await loadProfile();
+      }
     } catch (err: any) {
       alert(err.message || 'Payment failed');
     } finally {
@@ -131,7 +142,7 @@ const App: React.FC = () => {
   const unreadCount = user?.is_admin
     ? adminUnreadCount
     : messages.filter(
-        (m) => m.sender_id !== (user?.id || 10001) && !m.seen_at && !m.deleted_at
+        (m) => m.sender_id !== user?.id && !m.seen_at && !m.deleted_at
       ).length;
 
   if (loading) {

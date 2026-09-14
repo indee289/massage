@@ -4,7 +4,6 @@ export interface OwnerProfile {
   username: string;
   bio: string;
   avatar_url: string | null;
-  is_admin: boolean;
 }
 
 export interface UserProfile {

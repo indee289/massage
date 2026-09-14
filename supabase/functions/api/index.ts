@@ -821,47 +821,63 @@ Deno.serve(
         p0 === "me" &&
         method === "GET"
       ) {
-
         const subscription =
           await getSubscription(
             uid,
           );
 
+        let ownerProfile: any = null;
+        if (ADMIN_TG > 0) {
+          const { data } = await db
+            .from("profiles")
+            .select("user_id, first_name, last_name, username, bio, avatar_url, photo_url")
+            .eq("user_id", ADMIN_TG)
+            .maybeSingle();
+          ownerProfile = data;
+        }
+
+        const meObj = {
+          id: uid,
+          first_name:
+            profile.first_name ??
+            tgUser.first_name ??
+            null,
+          last_name:
+            profile.last_name ??
+            tgUser.last_name ??
+            null,
+          username:
+            profile.username ??
+            tgUser.username ??
+            null,
+          bio:
+            profile.bio ??
+            "",
+          avatar_url:
+            profile.avatar_url ??
+            profile.photo_url ??
+            tgUser.photo_url ??
+            null,
+          is_admin:
+            admin,
+          subscription:
+            subscription,
+        };
+
+        const ownerObj = {
+          id: ADMIN_TG || 0,
+          first_name: ownerProfile?.first_name || "Sanya Chouhan",
+          username: ownerProfile?.username || "sanyachouhaan_bot",
+          bio: ownerProfile?.bio || "Official Telegram Bot for direct 1-on-1 private messaging.",
+          avatar_url: ownerProfile?.avatar_url || ownerProfile?.photo_url || null,
+        };
+
         return json(
           {
-            id:
-              uid,
-
-            first_name:
-              profile.first_name ??
-              tgUser.first_name ??
-              null,
-
-            last_name:
-              profile.last_name ??
-              tgUser.last_name ??
-              null,
-
-            username:
-              profile.username ??
-              tgUser.username ??
-              null,
-
-            bio:
-              profile.bio ??
-              "",
-
-            avatar_url:
-              profile.avatar_url ??
-              profile.photo_url ??
-              tgUser.photo_url ??
-              null,
-
-            is_admin:
-              admin,
-
-            subscription:
-              subscription,
+            ok: true,
+            me: meObj,
+            owner: ownerObj,
+            ...meObj,
           },
         );
       }
