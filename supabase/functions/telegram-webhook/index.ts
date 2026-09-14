@@ -10,7 +10,7 @@
 // - No mock payment
 // - No hardcoded admin ID
 // - No in-memory database
-// - Premium = 199 XTR / 30 days
+// - Premium = 99 XTR / 30 days
 // - Subscription is activated ONLY after successful_payment
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
