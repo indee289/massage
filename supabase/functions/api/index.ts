@@ -1781,7 +1781,7 @@ Deno.serve(
                         "Premium — 30 Days",
 
                       amount:
-                        199,
+                        99,
                     },
                   ],
 
