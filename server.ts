@@ -180,51 +180,30 @@ function buildRequestBody(req: Request): string | undefined {
 |--------------------------------------------------------------------------
 */
 
-function buildForwardHeaders(req: Request): Headers {
-  const headers = new Headers();
+function buildForwardHeaders(req: Request): Record<string, string> {
+  const headers: Record<string, string> = {};
 
   const contentType = req.headers["content-type"];
 
   if (contentType) {
-    headers.set("content-type", String(contentType));
+    headers["content-type"] = String(contentType);
   }
-
-  /*
-   * Telegram Mini App authentication.
-   *
-   * The frontend should send:
-   *
-   * X-Telegram-Init-Data: <Telegram.WebApp.initData>
-   *
-   * We forward it untouched to the Supabase Edge Function.
-   */
 
   const telegramInitData =
     req.headers["x-telegram-init-data"] ||
     req.headers["X-Telegram-Init-Data"];
 
   if (telegramInitData) {
-    headers.set("x-telegram-init-data", String(telegramInitData));
+    headers["x-telegram-init-data"] = String(telegramInitData);
   }
-
-  /*
-   * Preserve Authorization if the frontend happens to use it.
-   *
-   * The Supabase Edge Function remains responsible for deciding
-   * whether the supplied authentication is valid.
-   */
 
   const authorization = req.headers.authorization;
 
   if (authorization) {
-    headers.set("authorization", authorization);
+    headers["authorization"] = authorization;
   }
 
-  /*
-   * Helpful request metadata.
-   */
-
-  headers.set("accept", "application/json");
+  headers["accept"] = "application/json";
 
   return headers;
 }

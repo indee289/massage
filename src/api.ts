@@ -6,10 +6,17 @@ function getHeaders(): Record<string, string> {
     'Content-Type': 'application/json',
   };
 
-  const tg = (window as any).Telegram?.WebApp;
-  if (tg?.initData) {
-    headers['x-telegram-init-data'] = tg.initData;
+  try {
+    if (typeof window !== 'undefined') {
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg && typeof tg.initData === 'string' && tg.initData.length > 0) {
+        headers['x-telegram-init-data'] = tg.initData;
+      }
+    }
+  } catch (err) {
+    // Ignore Telegram WebApp access errors in restricted iframe
   }
+
   return headers;
 }
 

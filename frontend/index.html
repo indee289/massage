@@ -46,6 +46,21 @@
       animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
   </style>
+  <script>
+    window.addEventListener('error', function(e) {
+      if (e && e.message && (e.message.includes('Illegal constructor') || e.message.includes('Telegram'))) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return true;
+      }
+    }, true);
+    window.addEventListener('unhandledrejection', function(e) {
+      if (e && e.reason && String(e.reason).includes('Illegal constructor')) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    }, true);
+  </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">

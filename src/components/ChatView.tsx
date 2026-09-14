@@ -153,13 +153,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  const formatDateGroup = (isoString: string) => {
+  const formatDateGroup = (isoString?: string) => {
+    if (!isoString) return '';
     const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
     return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const formatTime = (isoString: string) => {
+  const formatTime = (isoString?: string) => {
+    if (!isoString) return '';
     const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -305,7 +309,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       )}
                     </span>
                     <span className="text-[10px] text-slate-400 font-medium">
-                      {new Date(conv.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatTime(conv.last_message_at)}
                     </span>
                   </div>
 

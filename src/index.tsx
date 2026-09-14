@@ -16,8 +16,12 @@ const App: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
   });
 
   // Apply dark class to <html> tag
@@ -34,8 +38,9 @@ const App: React.FC = () => {
     try {
       const data = await api.getMe();
       setUser(data);
-    } catch (err) {
-      console.error('Failed to load user:', err);
+      setAuthError(null);
+    } catch (err: any) {
+      setAuthError(err.message || 'Open this Mini App inside Telegram.');
     } finally {
       setLoading(false);
     }
@@ -52,18 +57,24 @@ const App: React.FC = () => {
         setAdminUnreadCount(totalUnread);
       }
       const data = await api.getMessages();
-      setMessages(data.messages);
-    } catch (err) {
-      console.error('Failed to load messages:', err);
+      setMessages(data.messages || []);
+    } catch (err: any) {
+      // Quietly ignore polling errors when not inside Telegram
     }
   };
 
   useEffect(() => {
     // Expand Telegram WebApp if present
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg) {
-      tg.ready();
-      tg.expand();
+    try {
+      if (typeof window !== 'undefined') {
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg) {
+          if (typeof tg.ready === 'function') tg.ready();
+          if (typeof tg.expand === 'function') tg.expand();
+        }
+      }
+    } catch (e) {
+      // Ignore Telegram WebApp initialization errors in iframe preview
     }
 
     loadProfile();
@@ -148,6 +159,13 @@ const App: React.FC = () => {
           darkMode={darkMode}
           onToggleDarkMode={() => setDarkMode(!darkMode)}
         />
+
+        {authError && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-3 py-1.5 text-center text-[11px] font-semibold text-amber-700 dark:text-amber-300 flex items-center justify-center gap-1.5">
+            <span>📱</span>
+            <span>Telegram Mini App: Open via Telegram Bot to log in & chat</span>
+          </div>
+        )}
 
         {/* Views */}
         <main className="flex-1 flex flex-col overflow-hidden relative pb-16">
