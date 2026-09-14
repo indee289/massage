@@ -24,7 +24,7 @@ export interface UserProfile {
 }
 
 export interface Message {
-  id: number;
+  id: string;
   user_id: number;
   sender_id: number;
   text: string;
