@@ -56,7 +56,7 @@ export const api = {
     return res.json();
   },
 
-  async editMessage(id: number, text: string): Promise<{ ok: boolean }> {
+  async editMessage(id: string, text: string): Promise<{ ok: boolean }> {
     const res = await fetch(`/api/messages/${id}`, {
       method: 'PATCH',
       headers: getHeaders(),
@@ -69,7 +69,7 @@ export const api = {
     return res.json();
   },
 
-  async unsendMessage(id: number): Promise<{ ok: boolean }> {
+  async unsendMessage(id: string): Promise<{ ok: boolean }> {
     const res = await fetch(`/api/messages/${id}/unsend`, {
       method: 'POST',
       headers: getHeaders(),
@@ -81,7 +81,7 @@ export const api = {
     return res.json();
   },
 
-  async deleteMessage(id: number): Promise<{ ok: boolean }> {
+  async deleteMessage(id: string): Promise<{ ok: boolean }> {
     const res = await fetch(`/api/messages/${id}`, {
       method: 'DELETE',
       headers: getHeaders(),
@@ -143,7 +143,7 @@ export const api = {
     return res.json();
   },
 
-  async deleteAdminMessage(id: number): Promise<{ ok: boolean }> {
+  async deleteAdminMessage(id: string): Promise<{ ok: boolean }> {
     const res = await fetch(`/api/admin-messages/${id}`, {
       method: 'DELETE',
       headers: getHeaders(),
