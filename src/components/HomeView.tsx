@@ -105,7 +105,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </button>
 
                 <p className="text-[11px] font-medium text-slate-400 leading-tight">
-                  Unlock 1-on-1 private messaging with Sanya for 199 Telegram Stars.
+                  Unlock 1-on-1 private messaging with Sanya for 99 Telegram Stars.
                 </p>
               </>
             )}
