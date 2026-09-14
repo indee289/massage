@@ -34,7 +34,7 @@ const SUPABASE_URL =
 const SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const PREMIUM_AMOUNT = 199;
+const PREMIUM_AMOUNT = 99;
 const PREMIUM_DAYS = 30;
 const PREMIUM_SECONDS =
   PREMIUM_DAYS * 24 * 60 * 60;
