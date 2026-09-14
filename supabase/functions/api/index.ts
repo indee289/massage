@@ -1702,7 +1702,7 @@ Deno.serve(
       /* ══════════════════════════════
          CREATE INVOICE
          GET + POST supported
-         199 STARS / 30 DAYS
+         99 STARS / 30 DAYS
          ══════════════════════════════ */
 
       if (
